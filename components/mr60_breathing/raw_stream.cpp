@@ -4,6 +4,7 @@
 #include "esphome/core/log.h"
 
 #include <cerrno>
+#include <cinttypes>
 #include <cstdio>
 #include <cstring>
 
@@ -52,11 +53,12 @@ void RawStream::open_listener_() {
                                            sizeof(addr), this->port_);
   if (this->listener_->bind((struct sockaddr *) &addr, len) != 0 ||
       this->listener_->listen(1) != 0) {
-    ESP_LOGE(TAG, "could not listen on port %u", this->port_);
+    ESP_LOGE(TAG, "could not listen on port %u", (unsigned) this->port_);
     this->listener_ = nullptr;
     return;
   }
-  ESP_LOGI(TAG, "raw capture listening on port %u (%s mode)", this->port_,
+  ESP_LOGI(TAG, "raw capture listening on port %u (%s mode)",
+           (unsigned) this->port_,
            this->mode_ == RAW_MODE_TILES ? "tiles" : "phase");
 }
 
@@ -110,7 +112,7 @@ void RawStream::loop() {
     uint8_t scratch[32];
     ssize_t r = this->client_->read(scratch, sizeof(scratch));
     if (r == 0) {
-      ESP_LOGI(TAG, "raw capture client disconnected (%u lines dropped)",
+      ESP_LOGI(TAG, "raw capture client disconnected (%" PRIu32 " lines dropped)",
                this->dropped_);
       this->client_->close();
       this->client_ = nullptr;

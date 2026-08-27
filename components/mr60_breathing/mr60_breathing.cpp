@@ -3,6 +3,7 @@
 #include "esphome/core/log.h"
 
 #include <esp_timer.h>
+#include <cinttypes>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <cmath>
@@ -327,8 +328,9 @@ void MR60Breathing::publish_diagnostics_() {
     buffered = (float) this->dsp_.count / this->sample_rate_hz_;
 
   ESP_LOGD(TAG,
-           "sets=%u rate=%.3f Hz buffered=%.0f s | frames=%u hdr_err=%u "
-           "pl_err=%u unpaired=%u resync=%u ovf=%u raw=%s/%u",
+           "sets=%" PRIu32 " rate=%.3f Hz buffered=%.0f s | frames=%" PRIu32
+           " hdr_err=%" PRIu32 " pl_err=%" PRIu32 " unpaired=%" PRIu32
+           " resync=%" PRIu32 " ovf=%" PRIu32 " raw=%s/%" PRIu32,
            this->tile_sets_, this->sample_rate_hz_, buffered, this->frames_ok_,
            this->header_errors_, this->payload_errors_, this->unpaired_tiles_,
            this->resync_bytes_, this->overflows_,

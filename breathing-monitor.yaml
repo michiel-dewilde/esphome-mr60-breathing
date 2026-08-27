@@ -37,6 +37,10 @@ external_components:
       type: git
       url: https://github.com/michiel-dewilde/esphome-mr60-breathing
     components: [mr60_breathing]
+    # ESPHome caches git sources for a day by default, so a build can quietly
+    # use a stale copy of the component and finish suspiciously fast. While this
+    # is moving, always re-fetch. Raise it once the component settles down.
+    refresh: 0s
 
 # Lets the ESPHome dashboard offer this device for adoption once it is on the
 # network, and tells it where the configuration came from.

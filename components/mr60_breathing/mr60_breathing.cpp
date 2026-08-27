@@ -408,6 +408,8 @@ void MR60Breathing::publish_result_(const dsp_result_t &r) {
     this->snr_sensor_->publish_state(r.snr_db);
   if (this->depth_sensor_ != nullptr)
     this->depth_sensor_->publish_state(r.depth_um);
+  if (this->motion_sensor_ != nullptr)
+    this->motion_sensor_->publish_state(r.motion_ratio);
 #endif
 #ifdef USE_BINARY_SENSOR
   if (this->breathing_binary_sensor_ != nullptr)
@@ -436,6 +438,9 @@ void MR60Breathing::set_stability_threshold_pct(float v) {
 }
 void MR60Breathing::set_min_snr_db(float v) { this->cfg_.min_snr_db = v; }
 void MR60Breathing::set_min_depth_um(float v) { this->cfg_.min_depth_um = v; }
+void MR60Breathing::set_max_motion_ratio(float v) {
+  this->cfg_.max_motion_ratio = v;
+}
 void MR60Breathing::set_range_rows(int lo, int hi) {
   this->cfg_.row_min = lo;
   this->cfg_.row_max = hi;

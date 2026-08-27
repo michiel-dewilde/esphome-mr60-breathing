@@ -379,10 +379,36 @@ void dsp_config_defaults(dsp_config_t *cfg) {
    * confident breathing rate.
    *
    * Depth is the only quantity in the result that carries absolute amplitude.
-   * 10 um sits about 2x below the weakest real animal measured (21.5 um for a
-   * cat at 46 cm) and 5x above that false positive.
+   *
+   * Measured on the strongest range row, over the cat band: an empty room reads
+   * 7.7 um, the weakest real animal 45.8, and a cat asleep 55.1. 20 um sits
+   * between them with better than a factor of two either way.
    */
-  cfg->min_depth_um = 10.0f;
+  cfg->min_depth_um = 20.0f;
+
+  /*
+   * The motion ceiling. Breathing is a small movement; a body that shifts
+   * produces a far larger one at a lower frequency, and it does not announce
+   * itself - it produces a confident wrong answer rather than a refusal.
+   *
+   * Measured on a cat that settled and then moved: 39 um while still, 166 um
+   * while moving. Eighteen seconds of movement inside a sixty second window
+   * pulled the reported rate from 33.7 to 19.7 /min, with the verdict still
+   * reading ok at 67 % stability. A plausible number, and wrong by fourteen.
+   *
+   * What is gated is NOT an amplitude but its stationarity: the loudest
+   * sub-window divided by the median sub-window. A level threshold cannot work
+   * here, because averaged over a minute eighteen seconds of movement is
+   * indistinguishable from a large calm animal - measured, a settled cat
+   * reached 59 um and the one that moved 66.
+   *
+   * Non-stationarity separates them with room to spare. Across every recording
+   * held here, settled subjects score 1.10 to 1.74 and the cat that moved
+   * scores 4.63, its sub-window amplitudes running 24, 22, 21, 24, 70, 110,
+   * 103 um. The analysis assumes one rate holds for the whole window; this
+   * measures whether that assumption survived.
+   */
+  cfg->max_motion_ratio = 2.5f;
   /* 0.6 /min raw resolution, recovered to better than 0.05 /min by the
    * parabolic refinement in band_peak. Measured against a 0.002 Hz grid on all
    * six reference recordings the rates move by at most 0.02 /min, and the grid
@@ -399,6 +425,7 @@ const char *dsp_status_name(dsp_status_t s) {
     case DSP_STATUS_UNSTABLE:    return "unstable";
     case DSP_STATUS_LOW_SNR:     return "low_snr";
     case DSP_STATUS_TOO_SHALLOW: return "too_shallow";
+    case DSP_STATUS_MOVING:      return "moving";
     case DSP_STATUS_NO_DATA:     return "no_data";
     default:                     return "warming_up";
   }
@@ -649,10 +676,59 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
   }
 
   /* --- displacement, a lower bound --------------------------------------- */
-  /* Taken from the reference row - the one most representative of the common
-   * signal - using its amplitude before normalisation. Peak-to-peak of a
-   * sinusoid is 2*sqrt(2) times the RMS. */
-  float depth = g_std[ref] * 2.828427f * DSP_UM_PER_RADIAN;
+  /*
+   * Taken from the row with the LARGEST amplitude: the range bin that sees the
+   * target best. Peak-to-peak of a sinusoid is 2*sqrt(2) times the RMS.
+   *
+   * It used to be taken from the reference row, which is wrong and was caught
+   * by a sleeping cat. The reference row is chosen for phase coherence, not
+   * signal strength, so it can land on a weak row that merely correlates with
+   * everything - and it did: on a clean recording of a cat asleep at 74 cm,
+   * measuring 29.7 /min at 14 dB with 100 % window agreement, the reference row
+   * held 2.9 um while the row that actually saw her held 59.7. Reported as
+   * depth, that 2.9 um failed the amplitude gate and threw away a good
+   * measurement. Judging "is anything really there" on a row picked for a
+   * different purpose was never going to hold.
+   */
+  float depth = 0.0f;
+  for (int i = 0; i < nrows; i++)
+    if (g_std[i] > depth) depth = g_std[i];
+  depth *= 2.828427f * DSP_UM_PER_RADIAN;
+
+  float motion;
+  {
+    float tmp[DSP_ROWS];
+    for (int i = 0; i < nrows; i++)
+      tmp[i] = g_std[i] * 2.828427f * DSP_UM_PER_RADIAN;
+    motion = median_inplace(tmp, nrows);
+  }
+
+  /*
+   * Amplitude stationarity. g_work holds each row divided by its whole-window
+   * standard deviation, so the amplitude of a sub-window in the original units
+   * is simply g_std[r] times the sub-window standard deviation of the
+   * normalised row - no second pass over the raw phase needed.
+   */
+  float motion_ratio = 1.0f;
+  {
+    int w = (int) (15.0f * fs);
+    if (w >= 8 && w <= n) {
+      float sub[MAX_WINDOWS];
+      int nsub = 0;
+      for (int s0 = 0; s0 + w <= n && nsub < MAX_WINDOWS; s0 += w / 2) {
+        float per[DSP_ROWS];
+        for (int r2 = 0; r2 < nrows; r2++)
+          per[r2] = g_std[r2] * stddev(g_work[r2] + s0, w);
+        sub[nsub++] = median_inplace(per, nrows);
+      }
+      if (nsub >= 3) {
+        float peak = 0.0f;
+        for (int i = 0; i < nsub; i++) if (sub[i] > peak) peak = sub[i];
+        float mid = median_inplace(sub, nsub);
+        if (mid > 1e-9f) motion_ratio = peak / mid;
+      }
+    }
+  }
 
   /* --- verdict ----------------------------------------------------------- */
   out->rate_bpm = f0 * 60.0f;
@@ -660,6 +736,8 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
   out->snr_db = snr;
   out->stability_pct = stability;
   out->depth_um = depth;
+  out->motion_um = motion;
+  out->motion_ratio = motion_ratio;
   out->fs_hz = fs;
   out->duration_s = (float) span_s;
   out->n_samples = n;
@@ -679,6 +757,10 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
     out->stable = 0;
   } else if (cfg->min_depth_um > 0.0f && depth < cfg->min_depth_um) {
     out->status = DSP_STATUS_TOO_SHALLOW;
+    out->stable = 0;
+  } else if (cfg->max_motion_ratio > 0.0f &&
+             motion_ratio > cfg->max_motion_ratio) {
+    out->status = DSP_STATUS_MOVING;
     out->stable = 0;
   } else {
     out->status = DSP_STATUS_OK;

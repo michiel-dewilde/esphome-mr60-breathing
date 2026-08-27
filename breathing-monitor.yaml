@@ -144,6 +144,8 @@ sensor:
       name: Breathing SNR
     movement_depth:
       name: Movement depth
+    motion_ratio:
+      name: Motion
     sample_rate:
       name: Radar sample rate
     frame_errors:
@@ -218,7 +220,7 @@ number:
     min_value: 0
     max_value: 3600
     step: 1
-    initial_value: 10
+    initial_value: 20
     restore_value: true
     optimistic: true
     entity_category: config
@@ -298,7 +300,7 @@ number:
     # certify a 2 um interference as breathing - both are scale-invariant.
     # Raise it towards the depth you actually observe with your subject
     # present; zero disables the gate entirely.
-    initial_value: 10
+    initial_value: 20
     restore_value: true
     optimistic: true
     entity_category: config

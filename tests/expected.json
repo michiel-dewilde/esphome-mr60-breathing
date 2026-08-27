@@ -84,17 +84,43 @@
       "note": "Human band. Displacement is two orders of magnitude above the cat."
     },
     {
-      "name": "empty room, low-amplitude interference",
-      "fixture": "empty_room_lowamp.csv",
-      "args": [],
+      "name": "cat asleep at 74 cm",
+      "fixture": "cat_asleep.csv",
+      "args": ["--band", "0.30", "--bandhi", "0.75"],
+      "expect": {
+        "stable": true,
+        "status": "ok",
+        "rate_bpm": 29.7,
+        "stability_pct": 100.0
+      },
+      "counted_bpm": null,
+      "note": "A deeply asleep cat: 29.7 /min at 14 dB with 100 % window agreement, and the same animal that measured 28-30 /min on the bench weeks earlier. It is here because it was briefly REJECTED: depth was being read from the reference row, which is chosen for phase coherence rather than strength, and landed on a row holding 2.9 um while the row that saw her held 59.7."
+    },
+    {
+      "name": "cat that moved mid-window",
+      "fixture": "cat_moving.csv",
+      "args": ["--band", "0.30", "--bandhi", "0.75"],
       "expect": {
         "stable": false,
-        "status": "too_shallow",
+        "status": "moving",
         "rate_bpm": null,
         "stability_pct": null
       },
       "counted_bpm": null,
-      "note": "Captured live from a deployed device in an empty room. It reports 57 /min at 100 % stability and 13.4 dB - a higher SNR than a real cat - because stability and SNR are both scale-invariant. Only the 2 um amplitude gives it away. This case passed every gate before min_depth_um was enabled by default."
+      "note": "A human counted 35 breaths in this window but reported the cat was only still for the first 26. The settled portion measures 33.7 /min at 39 um; the last 18 seconds of movement reach 166 um and drag the whole-window estimate to 19.7 /min. Before the motion ceiling this was reported as ok at 67 % stability - a plausible rate, wrong by fourteen."
+    },
+    {
+      "name": "empty room, low-amplitude interference",
+      "fixture": "empty_room_lowamp.csv",
+      "args": ["--band", "0.30", "--bandhi", "0.75"],
+      "expect": {
+        "stable": false,
+        "status": "low_snr",
+        "rate_bpm": null,
+        "stability_pct": null
+      },
+      "counted_bpm": null,
+      "note": "Captured live from a deployed device in an empty room. It reports 57 /min at 100 % stability and 13.4 dB - a higher SNR than a real cat - because stability and SNR are both scale-invariant. Narrowed to the subject's band it fails on SNR as well, and on amplitude: 7.7 um against 45.8 for the weakest real animal. Run at the default 12-66 band this same recording is still reported as breathing, which is why the tuning guide says to narrow the band to the subject."
     },
     {
       "name": "empty room, the control",

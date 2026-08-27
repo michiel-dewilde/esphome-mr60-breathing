@@ -61,11 +61,14 @@ int main(int argc, char **argv) {
         cfg.band_lo_hz = 0.10f;
         cfg.band_hi_hz = 0.50f;
         cfg.highpass_hz = 0.05f;
+        cfg.max_motion_ratio = 0.0f;
       }
     } else if (!strcmp(argv[i], "--window") && i + 1 < argc) {
       cfg.window_s = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--mindepth") && i + 1 < argc) {
       cfg.min_depth_um = (float) atof(argv[++i]);
+    } else if (!strcmp(argv[i], "--maxdepth") && i + 1 < argc) {
+      cfg.max_motion_ratio = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--bandhi") && i + 1 < argc) {
       cfg.band_hi_hz = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--band") && i + 1 < argc) {
@@ -104,12 +107,13 @@ int main(int argc, char **argv) {
   if (as_json) {
     printf("{\"file\":\"%s\",\"status\":\"%s\",\"stable\":%d,"
            "\"rate_bpm\":%.3f,\"rate_td_bpm\":%.3f,\"snr_db\":%.2f,"
-           "\"stability_pct\":%.1f,\"depth_um\":%.1f,\"fs_hz\":%.4f,"
+           "\"stability_pct\":%.1f,\"depth_um\":%.1f,\"motion_um\":%.1f,"
+           "\"motion_ratio\":%.2f,\"fs_hz\":%.4f,"
            "\"duration_s\":%.2f,\"n_samples\":%d,\"n_rows\":%d,"
            "\"n_flipped\":%d,\"n_windows\":%d,\"n_breaths\":%d}\n",
            argv[1], dsp_status_name(r.status), r.stable,
            r.rate_bpm, r.rate_td_bpm, r.snr_db, r.stability_pct,
-           r.depth_um, r.fs_hz, r.duration_s, r.n_samples, r.n_rows,
+           r.depth_um, r.motion_um, r.motion_ratio, r.fs_hz, r.duration_s, r.n_samples, r.n_rows,
            r.n_flipped, r.n_windows, r.n_breaths);
     return 0;
   }

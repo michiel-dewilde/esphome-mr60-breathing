@@ -28,6 +28,7 @@ CONF_RATE_TIME_DOMAIN = "rate_time_domain"
 CONF_STABILITY = "stability"
 CONF_SNR = "snr"
 CONF_DEPTH = "movement_depth"
+CONF_MOTION = "motion_ratio"
 CONF_SAMPLE_RATE = "sample_rate"
 CONF_FRAME_ERRORS = "frame_errors"
 CONF_TILE_SETS = "tile_sets"
@@ -77,6 +78,15 @@ CONFIG_SCHEMA = cv.Schema(
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
             icon="mdi:arrow-expand-vertical",
         ),
+        # How much the amplitude varied across the window. Around 1 means the
+        # subject held still; well above it means the body moved, and a rate
+        # measured across that window mixes two different situations.
+        cv.Optional(CONF_MOTION): sensor.sensor_schema(
+            accuracy_decimals=2,
+            state_class=STATE_CLASS_MEASUREMENT,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            icon="mdi:run",
+        ),
         cv.Optional(CONF_SAMPLE_RATE): sensor.sensor_schema(
             unit_of_measurement=UNIT_HERTZ,
             accuracy_decimals=2,
@@ -112,6 +122,7 @@ _SETTERS = {
     CONF_STABILITY: "set_stability_sensor",
     CONF_SNR: "set_snr_sensor",
     CONF_DEPTH: "set_depth_sensor",
+    CONF_MOTION: "set_motion_sensor",
     CONF_SAMPLE_RATE: "set_sample_rate_sensor",
     CONF_FRAME_ERRORS: "set_frame_errors_sensor",
     CONF_TILE_SETS: "set_tile_sets_sensor",

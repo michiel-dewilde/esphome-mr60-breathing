@@ -78,6 +78,7 @@ typedef struct {
   float stability_threshold_pct;/* verdict threshold                   (60)   */
   float min_snr_db;             /* verdict threshold                   (6)    */
   float min_depth_um;           /* verdict threshold, 0 disables the gate     */
+  float max_motion_ratio;       /* movement gate, 0 disables it               */
   float freq_step_hz;           /* spectral grid resolution         (0.002)   */
   int   row_min, row_max;       /* which of the 8 ranges to include (0..7)    */
 } dsp_config_t;
@@ -92,6 +93,7 @@ typedef enum {
   DSP_STATUS_UNSTABLE,        /* peak moves between windows                  */
   DSP_STATUS_LOW_SNR,         /* stable-looking but weak                     */
   DSP_STATUS_TOO_SHALLOW,     /* below the displacement gate                 */
+  DSP_STATUS_MOVING,          /* too much displacement to be breathing       */
   DSP_STATUS_OK               /* reliable measurement                        */
 } dsp_status_t;
 
@@ -103,6 +105,8 @@ typedef struct {
   float snr_db;
   float stability_pct;
   float depth_um;          /* peak-to-peak displacement, a LOWER BOUND       */
+  float motion_um;         /* median displacement across rows                 */
+  float motion_ratio;      /* amplitude non-stationarity; >1 means it moved   */
   float fs_hz;
   float duration_s;
   int   n_samples;

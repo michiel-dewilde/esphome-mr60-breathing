@@ -55,6 +55,7 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   void set_stability_threshold_pct(float v);
   void set_min_snr_db(float v);
   void set_min_depth_um(float v);
+  void set_max_motion_ratio(float v);
   void set_range_rows(int lo, int hi);
   void set_update_interval_s(float v) { this->update_interval_s_ = v; }
 
@@ -69,6 +70,7 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   void set_stability_sensor(sensor::Sensor *s) { this->stability_sensor_ = s; }
   void set_snr_sensor(sensor::Sensor *s) { this->snr_sensor_ = s; }
   void set_depth_sensor(sensor::Sensor *s) { this->depth_sensor_ = s; }
+  void set_motion_sensor(sensor::Sensor *s) { this->motion_sensor_ = s; }
   void set_sample_rate_sensor(sensor::Sensor *s) { this->sample_rate_sensor_ = s; }
   void set_frame_errors_sensor(sensor::Sensor *s) { this->frame_errors_sensor_ = s; }
   void set_tile_sets_sensor(sensor::Sensor *s) { this->tile_sets_sensor_ = s; }
@@ -181,6 +183,7 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   sensor::Sensor *stability_sensor_{nullptr};
   sensor::Sensor *snr_sensor_{nullptr};
   sensor::Sensor *depth_sensor_{nullptr};
+  sensor::Sensor *motion_sensor_{nullptr};
   sensor::Sensor *sample_rate_sensor_{nullptr};
   sensor::Sensor *frame_errors_sensor_{nullptr};
   sensor::Sensor *tile_sets_sensor_{nullptr};

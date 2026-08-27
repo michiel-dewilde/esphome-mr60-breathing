@@ -34,6 +34,7 @@ CONF_STABILITY_TOLERANCE_BPM = "stability_tolerance_bpm"
 CONF_STABILITY_THRESHOLD_PCT = "stability_threshold_pct"
 CONF_MIN_SNR_DB = "min_snr_db"
 CONF_MIN_DEPTH_UM = "min_depth_um"
+CONF_MAX_MOTION_RATIO = "max_motion_ratio"
 CONF_RANGE_ROW_MIN = "range_row_min"
 CONF_RANGE_ROW_MAX = "range_row_max"
 CONF_UPDATE_SECONDS = "update_seconds"
@@ -99,7 +100,13 @@ CONFIG_SCHEMA = cv.All(
             # amplitude passes: a live empty room produced 57 /min at 2 um with
             # 100 % stability and 13.4 dB. Zero disables the gate, which is
             # only sensible while deliberately characterising an installation.
-            cv.Optional(CONF_MIN_DEPTH_UM, default=10.0): cv.float_range(0, 5000),
+            cv.Optional(CONF_MIN_DEPTH_UM, default=20.0): cv.float_range(0, 5000),
+            # Rejects a window in which the subject moved. Gates on how much the
+            # amplitude varied, not on its level: averaged over a minute,
+            # eighteen seconds of movement looks the same as a large calm
+            # animal. Settled subjects measure 1.10-1.74; a cat that shifted
+            # measured 4.63.
+            cv.Optional(CONF_MAX_MOTION_RATIO, default=2.5): cv.float_range(0, 20),
             # Which of the 8 range rows to include. Row r covers
             # (r + 8) * 5.74 cm, so 0-7 is 45.9 to 86.1 cm.
             cv.Optional(CONF_RANGE_ROW_MIN, default=0): cv.int_range(0, 7),
@@ -140,6 +147,7 @@ async def to_code(config):
     cg.add(var.set_stability_threshold_pct(config[CONF_STABILITY_THRESHOLD_PCT]))
     cg.add(var.set_min_snr_db(config[CONF_MIN_SNR_DB]))
     cg.add(var.set_min_depth_um(config[CONF_MIN_DEPTH_UM]))
+    cg.add(var.set_max_motion_ratio(config[CONF_MAX_MOTION_RATIO]))
     cg.add(var.set_range_rows(config[CONF_RANGE_ROW_MIN],
                               config[CONF_RANGE_ROW_MAX]))
     cg.add(var.set_update_interval_s(config[CONF_UPDATE_SECONDS]))

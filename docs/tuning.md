@@ -27,7 +27,8 @@ Before changing anything, read the diagnostics. They usually say what is wrong.
 | `no_data` | no tiles, or every row flat | check wiring and the sample rate |
 | `unstable` | the peak moves between windows | see below — this is the interesting one |
 | `low_snr` | a peak, but weak | move the sensor closer, or lower `Minimum SNR` knowing what that costs |
-| `too_shallow` | below the depth gate | your `Minimum depth` is set too high for this subject |
+| `too_shallow` | below the depth gate | nothing there, or the subject is beyond 86 cm |
+| `moving` | the subject shifted during the window | wait for it to settle; nothing to fix |
 
 ## `unstable` is usually correct
 
@@ -111,26 +112,54 @@ disturbance of *any* amplitude passes them. Measured on a live empty room, a
 than a real cat at 76 cm — and was published as a confident breathing rate.
 Depth is the only number in the result that carries absolute amplitude.
 
-To tune it for your installation: watch **Movement depth** with the subject
-present and settled, then again with the room empty. Put the threshold between
-the two, nearer the empty value. Measured references:
+Depth is measured on the **strongest range row** — the bin that sees the target
+best — not on some average. That distinction was learned the hard way: it used
+to be read from the row the coherent average uses as its reference, which is
+chosen for phase coherence rather than strength. On a clean recording of a cat
+asleep at 74 cm, that reference row held 2.9 µm while the row that actually saw
+her held 59.7, and a perfectly good measurement was thrown away as too shallow.
+
+Measured references, in the cat band:
 
 | scene | depth |
 |---|---|
-| empty room, 5 minutes steady | 2–5 µm |
-| cat at 46 cm | 21 µm |
-| cat at 76 cm | 26 µm |
-| cat at 63 cm | 40 µm |
-| adult at 60 cm | 3600 µm |
+| empty room | 7.7 µm |
+| cat at 1 m — beyond the window | 26 µm |
+| cat at 76 cm | 46 µm |
+| **cat asleep at 74 cm** | **55 µm** |
+| cat at 46 cm | 374 µm |
+| cat at 63 cm | 562 µm |
 
-The 10 µm default sits about twice the empty-room reading and about half the
-weakest animal measured. An adult is two orders of magnitude above a cat, which
-is why one threshold cannot be ideal for both.
+The 20 µm default sits better than a factor of two either side of the gap
+between an empty room and the weakest animal. A person reaches hundreds of µm,
+so the human profile wants a higher floor.
 
-Brief motion — someone walking past — produces tens of µm and will pass the
-gate. That is not a failure of the gate: motion genuinely displaces things. The
-stability test is what rejects it, because a passing disturbance does not hold
-one frequency across windows.
+Note the sleeping cat: deep sleep is *shallower* breathing, and it lands nearer
+the empty room than a restless animal does. If you raise this threshold to
+silence a noisy room, you may silence a sleeping animal too.
+
+## When the subject moves
+
+A body that shifts displaces far more than a chest that breathes, and it does
+not announce itself — it produces a confident wrong answer. Measured on a cat
+that settled and then moved: 18 seconds of movement inside a 60 s window pulled
+the reported rate from 33.7 to 19.7 /min, with the verdict still reading `ok`.
+
+The **Motion** diagnostic catches it. It is not an amplitude but a
+*stationarity*: the loudest 15 s sub-window divided by the median one. Averaged
+over a minute, movement is indistinguishable from a large calm animal — a
+settled cat reached 59 µm and one that moved 66 — but as non-stationarity they
+separate cleanly:
+
+| scene | motion |
+|---|---|
+| cat asleep | 1.04 |
+| settled cats | 1.27 – 1.70 |
+| **cat that moved** | **4.37** |
+
+Above `max_motion_ratio` (2.5 by default) the status becomes `moving` and no
+rate is published. That is the honest answer: the analysis assumes one rate
+holds across the window, and movement breaks the assumption.
 
 Treat the figure as a **lower bound**, not a calibrated displacement. It comes
 from the strongest range row, and clutter in the same bin dilutes it.

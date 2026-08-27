@@ -35,6 +35,12 @@ external_components:
       url: https://github.com/michiel-dewilde/esphome-mr60-breathing
     components: [mr60_breathing]
 
+# Lets the ESPHome dashboard offer this device for adoption once it is on the
+# network, and tells it where the configuration came from.
+dashboard_import:
+  package_import_url: github://michiel-dewilde/esphome-mr60-breathing/breathing-monitor.yaml@main
+  import_full_config: false
+
 logger:
   # The XIAO C6 has no USB-UART bridge, so logs go over the native USB port.
   hardware_uart: USB_SERIAL_JTAG

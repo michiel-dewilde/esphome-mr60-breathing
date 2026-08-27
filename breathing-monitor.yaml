@@ -1,0 +1,229 @@
+### Breathing monitor - Seeed MR60BHA2 kit with XIAO ESP32-C6
+###
+### Reports breathing rate to Home Assistant, including for animals, whose
+### breathing the radar module's own firmware refuses to report because its
+### target detection never fires for them.
+###
+### First boot brings up a WiFi access point called "Breathing Monitor Setup".
+### Connect to it and a captive portal asks for your network.
+###
+### The knobs at the bottom are Home Assistant number entities and survive a
+### reboot. Defaults suit a cat or a person at 45-85 cm.
+
+substitutions:
+  name: breathing-monitor
+  friendly_name: Breathing Monitor
+
+  # Radar UART. Matches the kit's wiring.
+  radar_rx_pin: GPIO17
+  radar_tx_pin: GPIO16
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: seeed_xiao_esp32c6
+  framework:
+    # ESP-IDF is not a preference here: ESPHome has no Arduino support for the
+    # C6 variant.
+    type: esp-idf
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/michiel-dewilde/esphome-mr60-breathing
+    components: [mr60_breathing]
+
+logger:
+  # The XIAO C6 has no USB-UART bridge, so logs go over the native USB port.
+  hardware_uart: USB_SERIAL_JTAG
+  level: INFO
+
+api:
+ota:
+  - platform: esphome
+
+wifi:
+  ap:
+    ssid: "Breathing Monitor Setup"
+
+captive_portal:
+
+# improv_serial would add a second route in over USB, but its `improv` library
+# does not resolve under ESP-IDF here (improv.h not found at compile time). The
+# captive portal above is the supported path; revisit if the library lands.
+
+# ---------------------------------------------------------------- the radar
+
+uart:
+  id: radar_uart
+  rx_pin: ${radar_rx_pin}
+  tx_pin: ${radar_tx_pin}
+  baud_rate: 115200
+  # Collection mode runs at roughly 88 % of this link's capacity, so the buffer
+  # is what stands between a slow loop iteration and lost tile sets.
+  rx_buffer_size: 4096
+
+mr60_breathing:
+  id: radar
+  uart_id: radar_uart
+
+sensor:
+  - platform: mr60_breathing
+    mr60_breathing_id: radar
+    breathing_rate:
+      name: Breathing rate
+    rate_time_domain:
+      name: Breathing rate (time domain)
+    stability:
+      name: Breathing stability
+    snr:
+      name: Breathing SNR
+    movement_depth:
+      name: Movement depth
+    sample_rate:
+      name: Radar sample rate
+    frame_errors:
+      name: Radar frame errors
+    tile_sets:
+      name: Radar tile sets
+    buffered_seconds:
+      name: Radar buffered
+
+  # ------------------------------------------------------ the rest of the kit
+  - platform: bh1750
+    name: Ambient light
+    address: 0x23
+    # Slow on purpose: a blocking I2C transaction in the main loop eats into
+    # the radar's timing budget, and ambient light does not change fast.
+    update_interval: 60s
+
+binary_sensor:
+  - platform: mr60_breathing
+    mr60_breathing_id: radar
+    breathing_detected:
+      name: Breathing detected
+
+text_sensor:
+  - platform: mr60_breathing
+    mr60_breathing_id: radar
+    status:
+      name: Breathing status
+
+i2c:
+  sda: GPIO22
+  scl: GPIO23
+
+light:
+  - platform: esp32_rmt_led_strip
+    name: Status LED
+    id: status_led
+    chipset: WS2812
+    pin: GPIO1
+    num_leds: 1
+    channel_colors: GRB
+    # Off by default. It sits next to a sleeping animal, and a monitor that
+    # lights up a dark room at night is a worse monitor. Drive it from an
+    # automation if you want it to mean something.
+    restore_mode: ALWAYS_OFF
+
+# ------------------------------------------------------------------- knobs
+#
+# All of these persist across reboots. The measurement is only as good as the
+# assumptions behind it, so the assumptions are adjustable.
+
+number:
+  - platform: template
+    name: Update interval
+    id: knob_update_interval
+    unit_of_measurement: s
+    min_value: 0
+    max_value: 3600
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    mode: box
+    # 0 means "start the next analysis as soon as the last one finished". On
+    # this chip that is roughly 2 Hz, not the 4.88 Hz tile rate: one pass costs
+    # about 450 ms and the C6 has no floating-point unit.
+    set_action:
+      - lambda: id(radar)->set_update_interval_s(x);
+
+  - platform: template
+    name: Rate band minimum
+    id: knob_rate_min
+    unit_of_measurement: "/min"
+    min_value: 4
+    max_value: 60
+    step: 1
+    initial_value: 12
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    set_action:
+      - lambda: id(radar)->set_band_min_bpm(x);
+
+  - platform: template
+    name: Rate band maximum
+    id: knob_rate_max
+    unit_of_measurement: "/min"
+    min_value: 10
+    max_value: 150
+    step: 1
+    initial_value: 66
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    set_action:
+      - lambda: id(radar)->set_band_max_bpm(x);
+
+  - platform: template
+    name: Stability threshold
+    id: knob_stability
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 100
+    step: 5
+    initial_value: 60
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    # Below this fraction of agreeing windows the rate is withheld. Measured:
+    # real targets score 67-100 %, an empty room 33 %.
+    set_action:
+      - lambda: id(radar)->set_stability_threshold_pct(x);
+
+  - platform: template
+    name: Minimum SNR
+    id: knob_min_snr
+    unit_of_measurement: dB
+    min_value: 0
+    max_value: 20
+    step: 0.5
+    initial_value: 6
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    set_action:
+      - lambda: id(radar)->set_min_snr_db(x);
+
+  - platform: template
+    name: Minimum depth
+    id: knob_min_depth
+    unit_of_measurement: µm
+    min_value: 0
+    max_value: 5000
+    step: 5
+    # Zero disables the gate. There is no honest default: the right floor has
+    # to be measured on the installation, by watching the reported depth with
+    # the subject present and with the room empty.
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    mode: box
+    set_action:
+      - lambda: id(radar)->set_min_depth_um(x);

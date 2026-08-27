@@ -3,9 +3,9 @@
 Breathing-rate sensing for Home Assistant on the Seeed MR60BHA2 60 GHz mmWave
 kit — including on animals, which the module's own firmware will not report.
 
-**Status: in progress.** The signal processing is written, validated and
-benchmarked on hardware. The ESPHome component that wraps it is next. See
-[Progress](#progress).
+**Status: working on hardware, not yet released.** The component runs on the
+device and reports to Home Assistant. Raw capture, provisioning polish and
+field validation remain. See [Progress](#progress).
 
 ---
 
@@ -62,13 +62,30 @@ heart runs 140–220 and would alias into the breathing harmonics.
 | M0 | repo, English-only CI gate, docs | **done** |
 | M1 | DSP ported to C, host replay regression | **done** — 6 of 6 recordings reproduce |
 | M1b | benchmark on the ESP32-C6 | **done** — 453 ms per pass, 34 % RAM |
-| M2 | ESPHome component: UART, tiles, diagnostics | next |
-| M3 | DSP on a FreeRTOS task | |
-| M4 | entities, tunable knobs, `unknown` semantics | |
-| M5 | raw capture over TCP | |
+| M2 | ESPHome component: UART, tiles, diagnostics | **done** — 4.882 Hz on hardware, zero payload errors |
+| M3 | DSP on a FreeRTOS task | **done** — 502 ms/pass live, UART unaffected |
+| M4 | entities, tunable knobs, `unknown` semantics | **done** |
+| M5 | raw capture over TCP | next |
 | M6 | provisioning, OTA, docs | |
 | M7 | release `v0.1.0` | |
 | M8 | field validation, long unattended run | |
+
+## Entities
+
+| entity | notes |
+|---|---|
+| `Breathing rate` | `/min`, **`unknown` when the verdict does not hold** |
+| `Breathing detected` | the verdict as a boolean |
+| `Breathing status` | `ok` / `unstable` / `low_snr` / `too_shallow` / `no_data` / `warming_up` |
+| `Breathing rate (time domain)` | independent estimate; prefer the higher when they disagree |
+| `Breathing stability`, `Breathing SNR`, `Movement depth` | diagnostics behind the verdict |
+| `Radar sample rate` | should sit at 4.88 Hz — the UART health check |
+| `Radar frame errors`, `Radar tile sets`, `Radar buffered` | link diagnostics |
+| `Ambient light` | BH1750 |
+| `Status LED` | WS2812, off by default |
+
+Tuning knobs are Home Assistant number entities and persist across reboots.
+See [docs/tuning.md](docs/tuning.md).
 
 ## Repository layout
 

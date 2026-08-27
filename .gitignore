@@ -7,3 +7,6 @@ secrets.yaml
 tools/replay/replay
 tools/replay/*.o
 tools/bench/.pio/
+build.log
+upload.log
+_t.sh

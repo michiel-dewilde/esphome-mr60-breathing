@@ -14,6 +14,7 @@
 #include "dsp.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,6 +37,8 @@
 #define MAX_SECTIONS 4
 #define MAX_FREQS 2048
 #define PAD_MAX 64
+#define MAX_PEAKS 256
+#define MAX_WINDOWS 64
 
 /* ------------------------------------------------------------------ scratch */
 /*
@@ -53,6 +56,30 @@ static float g_pad2[DSP_MAX_SAMPLES + 2 * PAD_MAX];
 static float g_win[DSP_MAX_SAMPLES];
 static float g_corr[DSP_ROWS][DSP_ROWS];
 static float g_seg[DSP_MAX_SAMPLES];
+
+/*
+ * Working arrays for the peak detector and the window-agreement test.
+ *
+ * These lived on the stack until an ESP32-C6 caught them: 3 kB of peak indices
+ * plus the window lists overflowed a 4 kB task stack and the chip took a stack
+ * protection fault on the first analysis. Keeping every sizeable buffer in
+ * static storage is what lets the analysis task stay small.
+ */
+static int   g_peak_idx[MAX_PEAKS];
+static int   g_peak_keep[MAX_PEAKS];
+static float g_peak_gap[MAX_PEAKS];
+static float g_win_bpm[MAX_WINDOWS];
+static float g_win_tmp[MAX_WINDOWS];
+
+/* ------------------------------------------------------------------- yield */
+
+static void (*g_yield)(void) = NULL;
+
+void dsp_set_yield_hook(void (*fn)(void)) { g_yield = fn; }
+
+static inline void dsp_yield(void) {
+  if (g_yield != NULL) g_yield();
+}
 
 /* --------------------------------------------------------------- utilities */
 
@@ -256,6 +283,10 @@ static int psd_grid(const float *x, int n, float fs, float f_lo, float f_hi,
     for (int i = 0; i < nfreq; i++) {
       float f = f_lo + df * (float) i;
       out[i] += goertzel_power(seg, nperseg, f / fs);
+      /* Every 32 frequencies is a few milliseconds of work at most, which is
+       * short enough to keep the UART fed and long enough that the yield
+       * itself costs nothing measurable. */
+      if ((i & 31) == 31) dsp_yield();
     }
     nseg++;
   }
@@ -477,8 +508,11 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
     }
 
     sos_filtfilt(&hp, y, n);
+    dsp_yield();
     sos_filtfilt(&hp2, y, n);
+    dsp_yield();
     sos_filtfilt(&lp, y, n);
+    dsp_yield();
 
     float s = stddev(y, n);
     if (!(s > 1e-9f) || !isfinite(s)) continue;   /* flat or broken row */
@@ -493,6 +527,7 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
   /* --- sign-aligned coherent average ------------------------------------ */
   /* Rows are normalised, so the correlation is just the mean product. */
   for (int a = 0; a < nrows; a++) {
+    dsp_yield();
     for (int b = a; b < nrows; b++) {
       float acc = 0.0f;
       for (int k = 0; k < n; k++) acc += g_work[a][k] * g_work[b][k];
@@ -533,11 +568,11 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
   /* --- window agreement, the stability statistic ------------------------- */
   int w = (int) (cfg->stability_window_s * fs);
   int nwin = 0, agree = 0;
-  float wf[64];
+  float *wf = g_win_bpm;
   if (w >= 16 && w <= n) {
     int wstep = w / 2;
     if (wstep < 1) wstep = 1;
-    for (int s0 = 0; s0 + w <= n && nwin < 64; s0 += wstep) {
+    for (int s0 = 0; s0 + w <= n && nwin < MAX_WINDOWS; s0 += wstep) {
       int nf = psd_grid(g_coh + s0, w, fs, cfg->band_lo_hz, hi,
                         cfg->freq_step_hz, w, g_psd, NULL);
       if (!nf) continue;
@@ -549,7 +584,7 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
   }
   float stability = 0.0f, win_median = NAN;
   if (nwin > 0) {
-    float tmp[64];
+    float *tmp = g_win_tmp;
     memcpy(tmp, wf, (size_t) nwin * sizeof(float));
     win_median = median_inplace(tmp, nwin);
     for (int i = 0; i < nwin; i++)
@@ -566,12 +601,13 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
     float height = 0.3f * stddev(g_coh, n);
     /* Local maxima above the height gate, kept greedily by amplitude so that
      * the minimum-distance rule matches scipy's find_peaks. */
-    int idx[256];
+    int *idx = g_peak_idx;
     int cnt = 0;
-    for (int k = 1; k < n - 1 && cnt < 256; k++)
+    for (int k = 1; k < n - 1 && cnt < MAX_PEAKS; k++)
       if (g_coh[k] > height && g_coh[k] >= g_coh[k - 1] && g_coh[k] > g_coh[k + 1])
         idx[cnt++] = k;
-    int keep[256], nkeep = 0;
+    int *keep = g_peak_keep;
+    int nkeep = 0;
     for (;;) {
       int bestk = -1;
       for (int i = 0; i < cnt; i++)
@@ -582,7 +618,7 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
       keep[nkeep++] = pos;
       for (int i = 0; i < cnt; i++)
         if (idx[i] >= 0 && abs(idx[i] - pos) < dist) idx[i] = -1;
-      if (nkeep >= 256) break;
+      if (nkeep >= MAX_PEAKS) break;
     }
     nbreaths = nkeep;
     if (nkeep > 1) {
@@ -591,7 +627,7 @@ int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
         while (j >= 0 && keep[j] > v) { keep[j + 1] = keep[j]; j--; }
         keep[j + 1] = v;
       }
-      float d[256];
+      float *d = g_peak_gap;
       for (int i = 1; i < nkeep; i++) d[i - 1] = (float) (keep[i] - keep[i - 1]) / fs;
       float md = median_inplace(d, nkeep - 1);
       if (md > 0.0f) td = 60.0f / md;

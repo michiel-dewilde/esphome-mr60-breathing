@@ -126,6 +126,19 @@ typedef struct {
   int     started;
 } dsp_state_t;
 
+/*
+ * Optional cooperative yield.
+ *
+ * One analysis pass costs about 450 ms on an ESP32-C6, which is far too long
+ * to hold the CPU: the radar UART runs at 88 % of capacity with roughly 400 ms
+ * of buffer slack, and starving the idle task trips the watchdog. The firmware
+ * installs a hook here that gives other tasks a turn; the host harness leaves
+ * it unset and the calls compile away to a null check.
+ *
+ * The hook must not touch dsp state and must return promptly.
+ */
+void dsp_set_yield_hook(void (*fn)(void));
+
 void dsp_init(dsp_state_t *st);
 
 /*

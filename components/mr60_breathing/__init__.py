@@ -114,6 +114,12 @@ CONFIG_SCHEMA = cv.All(
             # 0 means "start the next analysis as soon as the last finished",
             # which is roughly 2 Hz, not the 4.88 Hz tile rate: one pass costs
             # about 450 ms on this chip.
+            #
+            # Short intervals starve the network, not just the CPU. At 1 s a
+            # deployed device pinged at 84 ms and dropped its raw capture stream
+            # every few minutes; at 10 s, 25 ms and no drops. The analysis window
+            # is 60 s, so a shorter interval yields a number that changes more
+            # often rather than one that is fresher.
             cv.Optional(CONF_UPDATE_SECONDS, default=10): cv.int_range(0, 3600),
             # Raw capture. Nothing is serialised until a client actually
             # connects, so leaving this on costs one non-blocking accept per

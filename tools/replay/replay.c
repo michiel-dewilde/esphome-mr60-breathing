@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
   dsp_config_t cfg;
   dsp_config_defaults(&cfg);
   int as_json = 0;
+  double until_s = 0.0;
 
   for (int i = 2; i < argc; i++) {
     if (!strcmp(argv[i], "--json")) {
@@ -67,6 +68,11 @@ int main(int argc, char **argv) {
       cfg.window_s = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--mindepth") && i + 1 < argc) {
       cfg.min_depth_um = (float) atof(argv[++i]);
+    } else if (!strcmp(argv[i], "--until") && i + 1 < argc) {
+      /* Stop reading at this offset in seconds. Lets a long unattended
+       * recording be walked window by window with the same code the device
+       * runs, rather than with a lookalike written for the occasion. */
+      until_s = atof(argv[++i]);
     } else if (!strcmp(argv[i], "--maxdepth") && i + 1 < argc) {
       cfg.max_motion_ratio = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--bandhi") && i + 1 < argc) {
@@ -89,11 +95,14 @@ int main(int argc, char **argv) {
 
   char line[4096];
   long n = 0, bad = 0;
+  int64_t first_us = 0;
   while (fgets(line, sizeof(line), f)) {
     if (line[0] == '#' || line[0] == '\n') continue;
     int64_t t_us;
     float re[DSP_ROWS], im[DSP_ROWS];
     if (!parse_line(line, &t_us, re, im)) { bad++; continue; }
+    if (first_us == 0) first_us = t_us;
+    if (until_s > 0.0 && (double) (t_us - first_us) / 1e6 > until_s) break;
     dsp_push(&g_state, t_us, re, im);
     n++;
   }

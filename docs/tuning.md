@@ -201,10 +201,17 @@ that changes a default, set it once by hand.
 chip that is roughly **2 Hz, not the 4.88 Hz tile rate**: one pass costs about
 450 ms because the ESP32-C6 has no floating-point unit.
 
-Running continuously keeps a core busy and will show up as WiFi latency. The
-10 s default is a 4.5 % duty cycle. There is little reason to go below a couple
-of seconds — the analysis window is 60 s, so consecutive results share almost
-all their input and barely differ.
+**Short intervals cost network, not just CPU**, and the price is steeper than
+it looks. Measured on a deployed device set to a 1 s interval: ping averaged
+84 ms and the raw capture stream dropped every two or three minutes, because a
+pass that takes half a second leaves the loop that services the network almost
+no time. Returning it to 10 s took ping to 25 ms and the drops stopped
+outright.
+
+The 10 s default is a 4.5 % duty cycle. There is little reason to go below a
+couple of seconds: the analysis window is 60 s, so consecutive results share
+almost all of their input and barely differ. A shorter interval buys you a
+number that changes more often, not a number that is fresher.
 
 ## Accuracy, honestly
 

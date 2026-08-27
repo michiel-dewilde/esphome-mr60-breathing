@@ -74,6 +74,31 @@ So a resting adult below 12 /min needs the person profile, and a cat needs the
 animal one. Running the animal defaults on a slow-breathing person reads high
 and sits on the band edge; running the person profile on a cat can halve it.
 
+## The wide default band is the least safe setting
+
+The 12-66 /min default exists so the device does something sensible before you
+have configured anything. It is not the best setting for any actual subject,
+and on one real installation it manufactured a breathing rate out of a quiet
+room: a persistent interference near 57 /min sat inside the band and was
+reported confidently.
+
+Narrowing the band to the subject removed it outright, on the same recording:
+
+| band | empty room | real cats (28 / 30 / 39 counted) |
+|---|---|---|
+| 12-66 /min | **57.5 /min, 100 % stable, 8.3 dB** | 28.9, 26.5, 34.6 — all ok |
+| 18-45 /min | 20.9 /min, 33 % stable, 2.1 dB — rejected | 28.9, 26.5, 34.6 — all ok |
+
+Nothing real was lost and the false positive disappeared on every criterion at
+once. **If you know what you are watching, narrow the band.** A resting cat sits
+near 30 /min, so 18-45 is generous; an adult sits near 12, so 6-30 with
+`highpass_hz: 0.05` suits them. The wide default only makes sense while you do
+not yet know.
+
+Depth alone will not save you here. On that same empty room it wandered between
+2 and 28 um over a few minutes, crossing the 10 um gate in both directions,
+while the band change settled it permanently.
+
 ## Setting `Minimum depth`
 
 This gate ships at **10 µm**, and it is the only defence against a whole class

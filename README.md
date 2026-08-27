@@ -3,9 +3,9 @@
 Breathing-rate sensing for Home Assistant on the Seeed MR60BHA2 60 GHz mmWave
 kit — including on animals, which the module's own firmware will not report.
 
-**Status: working on hardware, not yet released.** The component runs on the
-device and reports to Home Assistant. Raw capture, provisioning polish and
-field validation remain. See [Progress](#progress).
+**v0.1.0.** Runs on hardware and reports to Home Assistant. It has not yet been
+left running unattended, and its accuracy against an animal rests on three human
+breath counts — see [What is not proven](CHANGELOG.md#what-is-not-proven).
 
 ---
 
@@ -78,8 +78,8 @@ heart runs 140–220 and would alias into the breathing harmonics.
 | M4 | entities, tunable knobs, `unknown` semantics | **done** |
 | M5 | raw capture over TCP | **done** — WiFi capture replays through the same harness |
 | M6 | provisioning, OTA, docs | **done** — 20 entities live in Home Assistant |
-| M7 | release `v0.1.0` | next |
-| M8 | field validation, long unattended run | |
+| M7 | release `v0.1.0` | **done** |
+| M8 | field validation, long unattended run | **outstanding** — the gap that matters |
 
 ## Entities
 
@@ -183,6 +183,10 @@ operation is a libgcc call. One analysis pass costs 453 ms, measured. The
 frequency grid is the dominant term and is deliberately coarse (0.010 Hz), with
 parabolic peak refinement recovering the precision — across all six recordings
 that choice moves the reported rate by at most 0.02 /min while halving the cost.
+
+## Changelog
+
+[CHANGELOG.md](CHANGELOG.md), which also lists what is *not* proven.
 
 ## Licence
 

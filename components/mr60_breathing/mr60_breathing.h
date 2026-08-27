@@ -200,23 +200,34 @@ class RawCaptureSwitch : public Component, public switch_::Switch {
   void set_parent(MR60Breathing *parent) { this->parent_ = parent; }
 
   /*
-   * Applying the restore mode needs an explicit setup(). Without one the
-   * switch never publishes an initial state: Home Assistant showed it off
-   * while the listener was in fact running, because the C++ default said
-   * enabled and nothing ever reconciled the two. A control that does not
-   * report what it controls is worse than no control.
+   * Applying the restore mode needs an explicit setup(): without one the switch
+   * never publishes an initial state at all.
+   *
+   * The published state is read back from the stream rather than assumed from
+   * the requested one. An earlier version published what it had been asked for,
+   * which drifted from reality the moment any path failed to apply - Home
+   * Assistant reported the capture port off while it was serving connections.
+   * Reporting the request instead of the result is how a control ends up lying
+   * about what it controls, and no amount of care at the call sites fixes that;
+   * only reading back does.
    */
   void setup() override {
-    bool state = this->get_initial_state_with_restore_mode().value_or(true);
-    this->write_state(state);
+    this->apply_(this->get_initial_state_with_restore_mode().value_or(true));
   }
 
  protected:
-  void write_state(bool state) override {
-    if (this->parent_ != nullptr)
-      this->parent_->set_raw_enabled(state);
-    this->publish_state(state);
+  void write_state(bool state) override { this->apply_(state); }
+
+  void apply_(bool wanted) {
+    if (this->parent_ == nullptr) {
+      // Nothing to control yet; say so rather than inventing a state.
+      this->publish_state(false);
+      return;
+    }
+    this->parent_->set_raw_enabled(wanted);
+    this->publish_state(this->parent_->raw_enabled());
   }
+
   MR60Breathing *parent_{nullptr};
 };
 #endif

@@ -149,6 +149,15 @@ switch:
     raw_capture:
       name: Raw capture
 
+button:
+  # A device managed over WiFi needs a way back that is not the USB cable.
+  - platform: restart
+    name: Restart
+    entity_category: config
+  - platform: safe_mode
+    name: Restart in safe mode
+    entity_category: config
+
 i2c:
   sda: GPIO22
   scl: GPIO23

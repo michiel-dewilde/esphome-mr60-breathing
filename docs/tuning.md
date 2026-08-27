@@ -110,6 +110,29 @@ one frequency across windows.
 Treat the figure as a **lower bound**, not a calibrated displacement. It comes
 from the strongest range row, and clutter in the same bin dilutes it.
 
+## Do the settings survive a reboot?
+
+Yes. Every knob is stored on the device and restored at boot — verified by
+setting one, rebooting the device with a firmware update, and reading it back
+unchanged. They are the device's settings, not Home Assistant's, so they also
+survive Home Assistant restarting or going away entirely.
+
+Two things can still lose a setting:
+
+- **A change made in the last minute before power is cut.** ESPHome batches
+  writes to flash (about once a minute by default) rather than writing on every
+  change, to spare the flash. Pull the plug straight after moving a slider and
+  the change may not have been written yet.
+- **A change to the entity in the configuration.** Stored values are keyed to
+  the entity's identity. Rename it, or change its ID, and the old value is
+  orphaned and the entity comes back at its configured `initial_value`.
+
+The second has a consequence worth knowing: **a new default in a firmware
+update does not reach a device that already has a stored value.** The stored
+one wins, which is what you want for settings you have chosen deliberately, and
+not what you want when a default changed because it was wrong. After an update
+that changes a default, set it once by hand.
+
 ## Update interval and what `0` really means
 
 `0` means "start the next analysis as soon as the last one finished". On this

@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+Everything below came out of running v0.1.0 on a real Home Assistant
+installation for an afternoon. All of it was invisible on the bench.
+
+- **An empty room was reported as breathing, confidently.** 57 /min, 100 %
+  stability, 13.4 dB — a higher SNR than a real cat. Stability and SNR are both
+  scale-invariant by construction, so a coherent disturbance of any amplitude
+  passes them. `min_depth_um` now defaults to 10 rather than shipping disabled,
+  and the capture is in the regression suite as the only case that ever passed
+  every gate the project had.
+- **The wide default band is the least safe setting**, now said plainly.
+  Narrowing to the subject removed that false positive outright while every real
+  cat survived unchanged.
+- **Restored settings were displayed but never applied.** ESPHome publishes a
+  number's restored value at boot without running its `set_action`, so after
+  every reboot the device analysed with compile-time defaults while Home
+  Assistant showed the stored ones. `on_boot` now pushes them in explicitly.
+- **The raw capture switch reported a state it did not have** — twice. First it
+  never published one; then it published what it had been asked for rather than
+  what resulted. It now reads the value back.
+- **Restart and safe-mode buttons**, whose absence left no way to reboot a
+  WiFi-managed device.
+- **Documented the package cache**, which lets an Install finish in seconds,
+  report success, flash, reboot, and contain none of your changes.
+
+Three of those are the same mistake in different clothes: trusting the value
+written instead of reading back the value that took effect.
+
 ## v0.1.0 — 27 August 2026
 
 First release. It works on hardware and reports to Home Assistant, but it has

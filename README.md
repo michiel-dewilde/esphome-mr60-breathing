@@ -77,8 +77,8 @@ heart runs 140–220 and would alias into the breathing harmonics.
 | M3 | DSP on a FreeRTOS task | **done** — 502 ms/pass live, UART unaffected |
 | M4 | entities, tunable knobs, `unknown` semantics | **done** |
 | M5 | raw capture over TCP | **done** — WiFi capture replays through the same harness |
-| M6 | provisioning, OTA, docs | next |
-| M7 | release `v0.1.0` | |
+| M6 | provisioning, OTA, docs | **done** — 20 entities live in Home Assistant |
+| M7 | release `v0.1.0` | next |
 | M8 | field validation, long unattended run | |
 
 ## Entities
@@ -120,6 +120,21 @@ make test          # language gate + build + all six recordings
 
 The device is checked against the host too. On the same 60 s recording the
 ESP32-C6 reports 28.86 /min where the workstation reports 28.84.
+
+## Home Assistant
+
+Flash, power on, join the **Breathing Monitor Setup** access point, and the
+captive portal asks for your network. Home Assistant's ESPHome integration
+discovers it from there; later updates go over the air.
+
+Twenty entities arrive, of which three matter: `Breathing rate` (the
+measurement), `Breathing detected` (the verdict) and `Breathing status` (why,
+when there is no rate). Dashboard cards, automations and the tuning knobs are
+in [docs/home-assistant.md](docs/home-assistant.md).
+
+**This is not a safety device.** It has never been validated for unattended
+monitoring, and it reports nothing at all when the subject is outside
+45.9-86.1 cm.
 
 ## Raw capture
 

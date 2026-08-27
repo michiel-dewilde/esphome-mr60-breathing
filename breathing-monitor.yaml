@@ -41,6 +41,12 @@ logger:
   level: INFO
 
 api:
+  # Plain, so a first flash works without a secrets.yaml. For anything
+  # permanent add an encryption key - see docs/home-assistant.md.
+  #
+  # encryption:
+  #   key: !secret api_encryption_key
+
 ota:
   - platform: esphome
 

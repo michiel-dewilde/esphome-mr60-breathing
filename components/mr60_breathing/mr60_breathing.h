@@ -195,13 +195,26 @@ class MR60Breathing : public Component, public uart::UARTDevice {
 };
 
 #ifdef USE_SWITCH
-class RawCaptureSwitch : public switch_::Switch {
+class RawCaptureSwitch : public Component, public switch_::Switch {
  public:
   void set_parent(MR60Breathing *parent) { this->parent_ = parent; }
 
+  /*
+   * Applying the restore mode needs an explicit setup(). Without one the
+   * switch never publishes an initial state: Home Assistant showed it off
+   * while the listener was in fact running, because the C++ default said
+   * enabled and nothing ever reconciled the two. A control that does not
+   * report what it controls is worse than no control.
+   */
+  void setup() override {
+    bool state = this->get_initial_state_with_restore_mode().value_or(true);
+    this->write_state(state);
+  }
+
  protected:
   void write_state(bool state) override {
-    this->parent_->set_raw_enabled(state);
+    if (this->parent_ != nullptr)
+      this->parent_->set_raw_enabled(state);
     this->publish_state(state);
   }
   MR60Breathing *parent_{nullptr};

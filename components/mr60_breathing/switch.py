@@ -14,7 +14,9 @@ from . import CONF_MR60_BREATHING_ID, MR60Breathing, mr60_breathing_ns
 
 DEPENDENCIES = ["mr60_breathing"]
 
-RawCaptureSwitch = mr60_breathing_ns.class_("RawCaptureSwitch", switch.Switch)
+RawCaptureSwitch = mr60_breathing_ns.class_(
+    "RawCaptureSwitch", cg.Component, switch.Switch
+)
 
 CONF_RAW_CAPTURE = "raw_capture"
 
@@ -26,7 +28,7 @@ CONFIG_SCHEMA = cv.Schema(
             entity_category=ENTITY_CATEGORY_CONFIG,
             icon="mdi:record-rec",
             default_restore_mode="RESTORE_DEFAULT_ON",
-        ),
+        ).extend(cv.COMPONENT_SCHEMA),
     }
 )
 
@@ -35,4 +37,7 @@ async def to_code(config):
     hub = await cg.get_variable(config[CONF_MR60_BREATHING_ID])
     if CONF_RAW_CAPTURE in config:
         sw = await switch.new_switch(config[CONF_RAW_CAPTURE])
+        # Registering it as a component is what gets setup() called, which is
+        # what applies the restore mode.
+        await cg.register_component(sw, config[CONF_RAW_CAPTURE])
         cg.add(sw.set_parent(hub))

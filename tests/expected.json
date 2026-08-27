@@ -84,6 +84,19 @@
       "note": "Human band. Displacement is two orders of magnitude above the cat."
     },
     {
+      "name": "empty room, low-amplitude interference",
+      "fixture": "empty_room_lowamp.csv",
+      "args": [],
+      "expect": {
+        "stable": false,
+        "status": "too_shallow",
+        "rate_bpm": null,
+        "stability_pct": null
+      },
+      "counted_bpm": null,
+      "note": "Captured live from a deployed device in an empty room. It reports 57 /min at 100 % stability and 13.4 dB - a higher SNR than a real cat - because stability and SNR are both scale-invariant. Only the 2 um amplitude gives it away. This case passed every gate before min_depth_um was enabled by default."
+    },
+    {
       "name": "empty room, the control",
       "fixture": "void_collect.csv",
       "args": [],

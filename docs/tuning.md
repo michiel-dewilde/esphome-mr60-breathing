@@ -76,14 +76,36 @@ and sits on the band edge; running the person profile on a cat can halve it.
 
 ## Setting `Minimum depth`
 
-This gate ships **disabled** (0), because an honest value has to be measured on
-your installation rather than guessed.
+This gate ships at **10 µm**, and it is the only defence against a whole class
+of false positive.
 
-To set it: watch **Movement depth** with the subject present and settled, then
-again with the room empty. Put the threshold between the two, nearer the empty
-value. For reference, on the recordings behind this project a cat at 63 cm read
-about 40 µm and an adult at 60 cm about 3600 µm — two orders of magnitude
-apart, which is why one number cannot serve both.
+**Stability and SNR are both scale-invariant by construction.** They are
+computed on the per-row normalised, coherently averaged signal, so a coherent
+disturbance of *any* amplitude passes them. Measured on a live empty room, a
+2 µm interference at 57 /min scored 100 % stability and 13.4 dB — a higher SNR
+than a real cat at 76 cm — and was published as a confident breathing rate.
+Depth is the only number in the result that carries absolute amplitude.
+
+To tune it for your installation: watch **Movement depth** with the subject
+present and settled, then again with the room empty. Put the threshold between
+the two, nearer the empty value. Measured references:
+
+| scene | depth |
+|---|---|
+| empty room, 5 minutes steady | 2–5 µm |
+| cat at 46 cm | 21 µm |
+| cat at 76 cm | 26 µm |
+| cat at 63 cm | 40 µm |
+| adult at 60 cm | 3600 µm |
+
+The 10 µm default sits about twice the empty-room reading and about half the
+weakest animal measured. An adult is two orders of magnitude above a cat, which
+is why one threshold cannot be ideal for both.
+
+Brief motion — someone walking past — produces tens of µm and will pass the
+gate. That is not a failure of the gate: motion genuinely displaces things. The
+stability test is what rejects it, because a passing disturbance does not hold
+one frequency across windows.
 
 Treat the figure as a **lower bound**, not a calibrated displacement. It comes
 from the strongest range row, and clutter in the same bin dilutes it.

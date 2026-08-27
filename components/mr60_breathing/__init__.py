@@ -94,9 +94,12 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_STABILITY_TOLERANCE_BPM, default=3.0): cv.float_range(1, 10),
             cv.Optional(CONF_STABILITY_THRESHOLD_PCT, default=60.0): cv.float_range(0, 100),
             cv.Optional(CONF_MIN_SNR_DB, default=6.0): cv.float_range(0, 20),
-            # No default worth having: an honest floor has to be measured on
-            # the installation. Zero disables the gate.
-            cv.Optional(CONF_MIN_DEPTH_UM, default=0.0): cv.float_range(0, 5000),
+            # The amplitude floor. Stability and SNR are both scale-invariant
+            # by construction, so without this a coherent signal of any
+            # amplitude passes: a live empty room produced 57 /min at 2 um with
+            # 100 % stability and 13.4 dB. Zero disables the gate, which is
+            # only sensible while deliberately characterising an installation.
+            cv.Optional(CONF_MIN_DEPTH_UM, default=10.0): cv.float_range(0, 5000),
             # Which of the 8 range rows to include. Row r covers
             # (r + 8) * 5.74 cm, so 0-7 is 45.9 to 86.1 cm.
             cv.Optional(CONF_RANGE_ROW_MIN, default=0): cv.int_range(0, 7),

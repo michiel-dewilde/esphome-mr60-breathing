@@ -368,7 +368,21 @@ void dsp_config_defaults(dsp_config_t *cfg) {
   cfg->stability_tol_bpm = 3.0f;
   cfg->stability_threshold_pct = 60.0f;
   cfg->min_snr_db = 6.0f;
-  cfg->min_depth_um = 0.0f;             /* gate disabled until measured */
+  /*
+   * The amplitude floor, and it is not optional.
+   *
+   * Stability and SNR are both computed on the per-row normalised, coherently
+   * averaged signal, so both are scale-invariant BY CONSTRUCTION: a coherent
+   * signal of any amplitude, however tiny, passes them. Measured on a live
+   * empty room, a 2 um interference at 57 /min scored 100 % stability and
+   * 13.4 dB - a higher SNR than a real cat at 76 cm - and was reported as a
+   * confident breathing rate.
+   *
+   * Depth is the only quantity in the result that carries absolute amplitude.
+   * 10 um sits about 2x below the weakest real animal measured (21.5 um for a
+   * cat at 46 cm) and 5x above that false positive.
+   */
+  cfg->min_depth_um = 10.0f;
   /* 0.6 /min raw resolution, recovered to better than 0.05 /min by the
    * parabolic refinement in band_peak. Measured against a 0.002 Hz grid on all
    * six reference recordings the rates move by at most 0.02 /min, and the grid

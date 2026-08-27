@@ -1,8 +1,9 @@
 # Tuning
 
-The defaults work for a cat or a person at 45–85 cm. Everything below is a
-Home Assistant number entity, persists across reboots, and can be changed while
-the device runs.
+The defaults are tuned for an **animal** at 45–85 cm. A person needs a
+different band — see [Choosing a band](#choosing-a-band-animal-or-person-not-both).
+Everything below is a Home Assistant number entity, persists across reboots,
+and can be changed while the device runs.
 
 Before changing anything, read the diagnostics. They usually say what is wrong.
 
@@ -39,10 +40,39 @@ If it is wrong, the likely causes in order:
 1. **The subject is outside 45.9–86.1 cm.** That range is fixed by the eight
    range rows the radar sends in collection mode. Outside it, there is nothing
    to measure. Move the sensor, not the knob.
-2. **The band is too wide.** The default 12–66 /min covers a cat and a person
-   at once, which leaves room for a harmonic to win. If you know the subject,
-   narrow it: a resting cat sits near 30, an adult near 12.
+2. **The band does not match the subject.** The defaults are the animal
+   profile; a resting adult below 12 /min falls off its lower edge. See the
+   next section — this is the single most common misconfiguration.
 3. **Something else in range is moving.** A fan, a curtain, a second animal.
+
+## Choosing a band: animal or person, not both
+
+**The defaults are the animal profile.** For a person, set:
+
+| knob | animal (default) | person |
+|---|---|---|
+| `rate_min_bpm` | 12 | **6** |
+| `rate_max_bpm` | 66 | **30** |
+| `highpass_hz` | 0.10 | **0.05** |
+
+This is not a convenience. The band's lower edge is a **drift guard**, not just
+a search range. Unwrapped radar phase wanders, and the residue of that wander
+piles up just above the high-pass corner. Measured on the reference
+recordings, dropping the edge from 12 to 8 /min lets the residue outweigh the
+breathing peak and the cat rates halve:
+
+| band minimum | cat 63 cm (truth 28) | blind 1 (truth 30) | adult (truth 11.4) |
+|---|---|---|---|
+| 12 /min | **28.9** | **26.5** | 12.0 — clipped at the edge |
+| 8 /min | 14.5 | 12.4 | 11.5 |
+
+The halved figures are not a sub-harmonic guard misfiring — forcing that guard
+off changes nothing. At the wider band 14.5 /min genuinely *is* the largest
+peak. The narrow band is what keeps it out.
+
+So a resting adult below 12 /min needs the person profile, and a cat needs the
+animal one. Running the animal defaults on a slow-breathing person reads high
+and sits on the band edge; running the person profile on a cat can halve it.
 
 ## Setting `Minimum depth`
 
@@ -71,10 +101,16 @@ all their input and barely differ.
 
 ## Accuracy, honestly
 
-The reported rate is accurate to about **±4 /min**, measured against three
-human counts. Both blind trials read *low*, and the two largest errors were on
-the two fastest rates, so there may be a low bias at high rates — unproven at
-n=3.
+Against a **paced** human breathing at a known 30 /min, the device read 30.0 to
+30.1 across eight consecutive updates — essentially exact. That is the easy
+case: deliberate breathing is strong, regular and nearly sinusoidal.
+
+Against a **cat**, the reported rate is accurate to about **±4 /min**, measured
+against three human counts. Both blind trials read *low*, and the two largest errors were on
+the two fastest rates, which suggested a low bias at high rates. The paced test
+above argues against that: a known 30 /min read 30.0, where a biased estimator
+should have read about 27. The residual error is more likely in how hard a
+cat's shallow breathing is to count by eye than in the estimator.
 
 **Breathing rate (time domain)** is a second, independent estimate from
 peak-to-peak intervals. When the two disagree by more than a couple of breaths,

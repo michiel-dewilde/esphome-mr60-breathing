@@ -68,9 +68,21 @@ CONFIG_SCHEMA = cv.All(
             # higher needs that raised, and it costs static RAM.
             cv.Optional(CONF_WINDOW_SECONDS, default=60): cv.int_range(30, 100),
             # Band edges in breaths per minute rather than Hz: this watches
-            # animals and people, and nobody thinks about breathing in Hz. The
-            # default spans a cat (25-42) and an adult (10-20) at once; narrow
-            # it when the subject is known.
+            # animals and people, and nobody thinks about breathing in Hz.
+            #
+            # The default is the ANIMAL band, and it is not a lazy wide range -
+            # the lower edge does real work. Unwrapped phase drifts, and the
+            # residue of that drift piles up just above the high-pass corner.
+            # Measured on the reference recordings, dropping the edge from 12 to
+            # 8 /min lets that residue outweigh the breathing peak and the cat
+            # rates halve: 28.9 becomes 14.5 and 26.5 becomes 12.4. It is not
+            # the sub-harmonic guard doing it - the halved value is genuinely
+            # the largest peak once admitted.
+            #
+            # So one band cannot serve both a cat and a resting adult. For a
+            # person use rate_min_bpm 6, rate_max_bpm 30, highpass_hz 0.05,
+            # which reproduces the reference adult at 11.4 /min. See
+            # docs/tuning.md.
             cv.Optional(CONF_RATE_MIN_BPM, default=12.0): cv.float_range(4, 60),
             cv.Optional(CONF_RATE_MAX_BPM, default=66.0): cv.float_range(10, 150),
             cv.Optional(CONF_HIGHPASS_HZ, default=0.10): cv.float_range(0.02, 0.5),

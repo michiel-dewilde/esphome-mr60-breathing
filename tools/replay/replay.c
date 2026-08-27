@@ -64,6 +64,10 @@ int main(int argc, char **argv) {
       }
     } else if (!strcmp(argv[i], "--window") && i + 1 < argc) {
       cfg.window_s = (float) atof(argv[++i]);
+    } else if (!strcmp(argv[i], "--band") && i + 1 < argc) {
+      cfg.band_lo_hz = (float) atof(argv[++i]);
+    } else if (!strcmp(argv[i], "--hp") && i + 1 < argc) {
+      cfg.highpass_hz = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--df") && i + 1 < argc) {
       cfg.freq_step_hz = (float) atof(argv[++i]);
     } else if (!strcmp(argv[i], "--stabwin") && i + 1 < argc) {

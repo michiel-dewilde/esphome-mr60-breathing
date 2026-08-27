@@ -68,6 +68,16 @@ uart:
 mr60_breathing:
   id: radar
   uart_id: radar_uart
+  # Defaults are the ANIMAL profile: band 12-66 /min, high-pass 0.10 Hz.
+  #
+  # For a person, uncomment these instead. One band cannot serve both: the
+  # lower edge suppresses drift residue, and an edge low enough for a resting
+  # adult lets that residue outweigh a cat's breathing peak and halve the
+  # reported rate. Measured, not guessed - see docs/tuning.md.
+  #
+  # rate_min_bpm: 6
+  # rate_max_bpm: 30
+  # highpass_hz: 0.05
 
 sensor:
   - platform: mr60_breathing

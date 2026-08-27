@@ -35,10 +35,21 @@ Validated against human breath counts on a resting cat:
 | resting adult at 60 cm | 11.4 /min | — | — |
 | **empty room** | **no pattern** | — | correctly rejected |
 
+Live on the device, against a human deliberately pacing at 30 /min: **30.0 to
+30.1 /min across eight consecutive updates.** That is the easy case — paced
+breathing is strong and regular — but it is an end-to-end check against a known
+truth, and it argues against the low-rate bias the cat trials hinted at.
+
 **Accuracy is ±4 breaths/min.** Both blind trials read low, and the two largest
 errors were on the two fastest rates, so there may be a low bias at high rates.
 That is unproven at n=3 and stated rather than hidden. A time-domain estimate
 is published alongside; when the two disagree, the higher has been closer.
+
+**One band does not fit both.** The defaults are tuned for an animal. A resting
+adult needs `rate_min_bpm: 6`, `rate_max_bpm: 30`, `highpass_hz: 0.05` — the
+band's lower edge suppresses drift residue, and an edge low enough for a slow
+human lets that residue halve a cat's reported rate. See
+[docs/tuning.md](docs/tuning.md).
 
 Reliability is decided by **window agreement**: the fraction of 30 s windows
 whose spectral peak matches the session median. Across six recordings it

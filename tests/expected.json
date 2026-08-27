@@ -1,0 +1,100 @@
+{
+  "_comment": [
+    "Regression targets for the on-device DSP, taken from the Python reference",
+    "implementation that was validated against human breath counts.",
+    "",
+    "The rates in 'rate_bpm' are what the reference produced on the same",
+    "recording with the same window. They are not ground truth: the counted",
+    "truth is in 'counted_bpm' where a human counted, and the reference itself",
+    "is only accurate to about +/-4 /min. What this file pins down is that the",
+    "C port still agrees with the reference it was derived from, so that a",
+    "change to the firmware's signal processing cannot silently drift.",
+    "",
+    "void_collect is the control that matters most: an empty room must never",
+    "produce a stable verdict."
+  ],
+  "tolerance": {
+    "rate_bpm": 1.0,
+    "stability_pct": 10.0
+  },
+  "cases": [
+    {
+      "name": "cat at 63 cm, full 180 s",
+      "fixture": "cat63.csv",
+      "args": ["--window", "180"],
+      "expect": {
+        "stable": true,
+        "status": "ok",
+        "rate_bpm": 29.9,
+        "stability_pct": 82.0
+      },
+      "counted_bpm": null,
+      "note": "Reference run over the whole recording."
+    },
+    {
+      "name": "cat at 63 cm, 60 s, human-counted",
+      "fixture": "cat63_count.csv",
+      "args": [],
+      "expect": {
+        "stable": true,
+        "status": "ok",
+        "rate_bpm": 28.8,
+        "stability_pct": 67.0
+      },
+      "counted_bpm": 28,
+      "note": "Counted live at 26, corrected to about 28 by the observer."
+    },
+    {
+      "name": "blind trial 1, undisclosed distance",
+      "fixture": "blind1.csv",
+      "args": [],
+      "expect": {
+        "stable": true,
+        "status": "ok",
+        "rate_bpm": 26.5,
+        "stability_pct": 100.0
+      },
+      "counted_bpm": 30,
+      "note": "Estimate ran 3.5 /min low against the count."
+    },
+    {
+      "name": "blind trial 2, undisclosed distance",
+      "fixture": "blind2.csv",
+      "args": [],
+      "expect": {
+        "stable": true,
+        "status": "ok",
+        "rate_bpm": 34.6,
+        "stability_pct": 100.0
+      },
+      "counted_bpm": 39,
+      "note": "Estimate ran 4.4 /min low; the count may include extra breaths."
+    },
+    {
+      "name": "resting adult at 60 cm",
+      "fixture": "human60cm.csv",
+      "args": ["--profile", "human"],
+      "expect": {
+        "stable": true,
+        "status": "ok",
+        "rate_bpm": 11.4,
+        "stability_pct": 100.0
+      },
+      "counted_bpm": null,
+      "note": "Human band. Displacement is two orders of magnitude above the cat."
+    },
+    {
+      "name": "empty room, the control",
+      "fixture": "void_collect.csv",
+      "args": [],
+      "expect": {
+        "stable": false,
+        "status": "warming_up",
+        "rate_bpm": null,
+        "stability_pct": null
+      },
+      "counted_bpm": null,
+      "note": "Only 45 s long, so fewer than three stability windows form and no verdict is offered. With three windows forced it scores 33 %, against 80-100 % for a breathing animal."
+    }
+  ]
+}

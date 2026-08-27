@@ -16,6 +16,41 @@ After that the device is discovered by Home Assistant's ESPHome integration in
 the usual way — **Settings → Devices & Services** will offer it. Later updates
 go over the air; the USB cable is only needed for the first flash.
 
+## Adopting it, and the package cache
+
+Adopting the device writes a small wrapper configuration in your ESPHome
+dashboard that pulls this repository as a package:
+
+```yaml
+packages:
+  michiel_dewilde.mr60_breathing: github://michiel-dewilde/esphome-mr60-breathing/breathing-monitor.yaml@main
+```
+
+**ESPHome caches that package for a day.** Until the cache expires, pressing
+Install rebuilds against the copy it already has — the build finishes in
+seconds, reports success, flashes, reboots, and contains none of your updates.
+Nothing warns you. The tell is the speed, and the absence of whatever you were
+expecting.
+
+While this component is changing, expand the shorthand so the package is
+re-fetched every time:
+
+```yaml
+packages:
+  michiel_dewilde.mr60_breathing:
+    url: https://github.com/michiel-dewilde/esphome-mr60-breathing
+    ref: main
+    files: [breathing-monitor.yaml]
+    refresh: 0s
+```
+
+`refresh: 0s` costs a git fetch per build and removes an entire class of
+confusion. Raise it once you are pinning to releases rather than following the
+branch.
+
+Note that "Clean Build Files" does not help here: it clears compiled objects,
+not the package cache.
+
 ## The entities, and which ones matter
 
 | entity | what to do with it |

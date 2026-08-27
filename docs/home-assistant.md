@@ -2,9 +2,15 @@
 
 ## Getting the device onto your network
 
-Flash `breathing-monitor.yaml`, then power the board. It brings up an access
-point called **Breathing Monitor Setup**; connect to it and a captive portal
-asks for your WiFi network.
+Flash `breathing-monitor.yaml`, then power the board.
+
+**Wait about a minute.** ESPHome scans for known networks before falling back to
+its own access point, so **Breathing Monitor Setup** does not appear
+immediately - and the clock restarts on every reset. It is easy to conclude the
+access point is broken when it has simply not been given its minute yet.
+
+Once it appears, connect to it and a captive portal asks for your WiFi
+network.
 
 After that the device is discovered by Home Assistant's ESPHome integration in
 the usual way — **Settings → Devices & Services** will offer it. Later updates

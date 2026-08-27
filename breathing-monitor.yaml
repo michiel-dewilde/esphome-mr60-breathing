@@ -21,6 +21,9 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  project:
+    name: michiel_dewilde.mr60_breathing
+    version: "0.1.0"
 
 esp32:
   board: seeed_xiao_esp32c6

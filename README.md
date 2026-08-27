@@ -123,7 +123,8 @@ ESP32-C6 reports 28.86 /min where the workstation reports 28.84.
 
 ## Home Assistant
 
-Flash, power on, join the **Breathing Monitor Setup** access point, and the
+Flash, power on, wait about a minute for the **Breathing Monitor Setup** access
+point to appear - ESPHome scans for known networks first - then join it and the
 captive portal asks for your network. Home Assistant's ESPHome integration
 discovers it from there; later updates go over the air.
 

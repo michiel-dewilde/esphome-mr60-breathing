@@ -15,8 +15,8 @@ from esphome.components import uart
 from esphome.const import CONF_ID
 
 CODEOWNERS = ["@michiel-dewilde"]
-DEPENDENCIES = ["uart"]
-AUTO_LOAD = ["sensor", "binary_sensor", "text_sensor"]
+DEPENDENCIES = ["uart", "socket", "network"]
+AUTO_LOAD = ["sensor", "binary_sensor", "text_sensor", "switch"]
 
 mr60_breathing_ns = cg.esphome_ns.namespace("mr60_breathing")
 MR60Breathing = mr60_breathing_ns.class_(
@@ -37,6 +37,10 @@ CONF_MIN_DEPTH_UM = "min_depth_um"
 CONF_RANGE_ROW_MIN = "range_row_min"
 CONF_RANGE_ROW_MAX = "range_row_max"
 CONF_UPDATE_SECONDS = "update_seconds"
+CONF_RAW_PORT = "raw_capture_port"
+CONF_RAW_MODE = "raw_capture_mode"
+
+RAW_MODES = {"phase": 0, "tiles": 1}
 
 
 def _validate(config):
@@ -101,6 +105,16 @@ CONFIG_SCHEMA = cv.All(
             # which is roughly 2 Hz, not the 4.88 Hz tile rate: one pass costs
             # about 450 ms on this chip.
             cv.Optional(CONF_UPDATE_SECONDS, default=10): cv.int_range(0, 3600),
+            # Raw capture. Nothing is serialised until a client actually
+            # connects, so leaving this on costs one non-blocking accept per
+            # loop and nothing else. Set the port to 0 to remove the listener.
+            #
+            # phase: ~330 B/s, the same CSV the test fixtures use, and enough
+            #        to reproduce every analysis this component performs.
+            # tiles: ~20 kB/s, the untouched radar payload as R lines.
+            cv.Optional(CONF_RAW_PORT, default=6060): cv.port,
+            cv.Optional(CONF_RAW_MODE, default="phase"): cv.enum(RAW_MODES,
+                                                                 lower=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -126,3 +140,5 @@ async def to_code(config):
     cg.add(var.set_range_rows(config[CONF_RANGE_ROW_MIN],
                               config[CONF_RANGE_ROW_MAX]))
     cg.add(var.set_update_interval_s(config[CONF_UPDATE_SECONDS]))
+    cg.add(var.set_raw_port(config[CONF_RAW_PORT]))
+    cg.add(var.set_raw_mode(config[CONF_RAW_MODE]))

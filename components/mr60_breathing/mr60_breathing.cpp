@@ -71,6 +71,7 @@ void MR60Breathing::setup() {
   this->enable_collection_();
 
   dsp_set_yield_hook(dsp_yield_to_scheduler);
+  this->raw_.setup();
 
   /*
    * The analysis runs in its own task at the same priority as the ESPHome main
@@ -108,6 +109,9 @@ void MR60Breathing::dump_config() {
   ESP_LOGCONFIG(TAG, "  update interval %.0f s%s", this->update_interval_s_,
                 this->update_interval_s_ <= 0.0f ? " (as fast as possible)" : "");
   ESP_LOGCONFIG(TAG, "  analysis state  %u bytes", (unsigned) sizeof(dsp_state_t));
+  ESP_LOGCONFIG(TAG, "  raw capture     %s, %s mode",
+                this->raw_.enabled() ? "listening" : "off",
+                this->raw_.mode() == RAW_MODE_TILES ? "tiles" : "phase");
 }
 
 // ------------------------------------------------------------- radar link
@@ -193,6 +197,7 @@ void MR60Breathing::handle_frame_(int64_t t_us, uint16_t type,
     return;
 
   this->last_tile_us_ = t_us;
+  this->raw_.write_tile(t_us, type, payload, len);
 
   if (type == TYPE_TILE_A) {
     if (this->have_a_)
@@ -215,6 +220,8 @@ void MR60Breathing::handle_frame_(int64_t t_us, uint16_t type,
   memcpy(re, this->a_re_, sizeof(this->a_re_));
   memcpy(im, this->a_im_, sizeof(this->a_im_));
   dsp_decode_tile(payload, re + DSP_ROWS_PER_TILE, im + DSP_ROWS_PER_TILE);
+
+  this->raw_.write_phase(this->a_time_, re, im);
 
   // Hand the set to the analysis task rather than writing it directly: the
   // task owns the DSP ring while it is working on it.
@@ -279,6 +286,8 @@ void MR60Breathing::loop() {
     }
   }
 
+  this->raw_.loop();
+
   const uint32_t now = millis();
 
   // Collection mode is a RAM byte; a radar reset silently reverts to normal
@@ -319,10 +328,11 @@ void MR60Breathing::publish_diagnostics_() {
 
   ESP_LOGD(TAG,
            "sets=%u rate=%.3f Hz buffered=%.0f s | frames=%u hdr_err=%u "
-           "pl_err=%u unpaired=%u resync=%u ovf=%u",
+           "pl_err=%u unpaired=%u resync=%u ovf=%u raw=%s/%u",
            this->tile_sets_, this->sample_rate_hz_, buffered, this->frames_ok_,
            this->header_errors_, this->payload_errors_, this->unpaired_tiles_,
-           this->resync_bytes_, this->overflows_);
+           this->resync_bytes_, this->overflows_,
+           this->raw_.has_client() ? "client" : "idle", this->raw_.dropped());
 
 #ifdef USE_SENSOR
   if (this->sample_rate_sensor_ != nullptr)

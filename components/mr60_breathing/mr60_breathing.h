@@ -13,10 +13,15 @@
 #ifdef USE_TEXT_SENSOR
 #include "esphome/components/text_sensor/text_sensor.h"
 #endif
+#ifdef USE_SWITCH
+#include "esphome/components/switch/switch.h"
+#endif
 
 extern "C" {
 #include "dsp.h"
 }
+
+#include "raw_stream.h"
 
 namespace esphome {
 namespace mr60_breathing {
@@ -52,6 +57,11 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   void set_min_depth_um(float v);
   void set_range_rows(int lo, int hi);
   void set_update_interval_s(float v) { this->update_interval_s_ = v; }
+
+  void set_raw_port(uint16_t v) { this->raw_.set_port(v); }
+  void set_raw_mode(int v) { this->raw_.set_mode((RawMode) v); }
+  void set_raw_enabled(bool v) { this->raw_.set_enabled(v); }
+  bool raw_enabled() const { return this->raw_.enabled(); }
 
 #ifdef USE_SENSOR
   void set_breathing_rate_sensor(sensor::Sensor *s) { this->rate_sensor_ = s; }
@@ -156,6 +166,8 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   uint32_t staging_dropped_{0};
 
   // --- analysis -------------------------------------------------------------
+  RawStream raw_;
+
   dsp_state_t dsp_{};
   dsp_config_t cfg_{};
   volatile float update_interval_s_{10.0f};
@@ -181,6 +193,20 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   text_sensor::TextSensor *status_text_sensor_{nullptr};
 #endif
 };
+
+#ifdef USE_SWITCH
+class RawCaptureSwitch : public switch_::Switch {
+ public:
+  void set_parent(MR60Breathing *parent) { this->parent_ = parent; }
+
+ protected:
+  void write_state(bool state) override {
+    this->parent_->set_raw_enabled(state);
+    this->publish_state(state);
+  }
+  MR60Breathing *parent_{nullptr};
+};
+#endif
 
 }  // namespace mr60_breathing
 }  // namespace esphome

@@ -79,6 +79,13 @@ mr60_breathing:
   # rate_max_bpm: 30
   # highpass_hz: 0.05
 
+  # Raw capture. Nothing is serialised until something connects to the port, so
+  # leaving this on costs one non-blocking accept per loop and nothing else.
+  # Use tools/rawcapture.py to record; "phase" is ~330 B/s and replays through
+  # tools/replay, "tiles" is ~20 kB/s of untouched radar payload.
+  raw_capture_port: 6060
+  raw_capture_mode: phase
+
 sensor:
   - platform: mr60_breathing
     mr60_breathing_id: radar
@@ -120,6 +127,12 @@ text_sensor:
     mr60_breathing_id: radar
     status:
       name: Breathing status
+
+switch:
+  - platform: mr60_breathing
+    mr60_breathing_id: radar
+    raw_capture:
+      name: Raw capture
 
 i2c:
   sda: GPIO22

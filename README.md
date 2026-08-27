@@ -76,8 +76,8 @@ heart runs 140–220 and would alias into the breathing harmonics.
 | M2 | ESPHome component: UART, tiles, diagnostics | **done** — 4.882 Hz on hardware, zero payload errors |
 | M3 | DSP on a FreeRTOS task | **done** — 502 ms/pass live, UART unaffected |
 | M4 | entities, tunable knobs, `unknown` semantics | **done** |
-| M5 | raw capture over TCP | next |
-| M6 | provisioning, OTA, docs | |
+| M5 | raw capture over TCP | **done** — WiFi capture replays through the same harness |
+| M6 | provisioning, OTA, docs | next |
 | M7 | release `v0.1.0` | |
 | M8 | field validation, long unattended run | |
 
@@ -104,6 +104,7 @@ See [docs/tuning.md](docs/tuning.md).
 components/mr60_breathing/dsp.{c,h}   the signal processing, plain C11
 tools/replay/                         host harness: same C, recorded input
 tools/bench/                          on-device benchmark (PlatformIO)
+tools/rawcapture.py                   record from a deployed device
 tools/check_language.py               English-only build gate
 tests/fixtures/                       six recordings, compacted
 tests/expected.json                   regression targets and human counts
@@ -119,6 +120,21 @@ make test          # language gate + build + all six recordings
 
 The device is checked against the host too. On the same 60 s recording the
 ESP32-C6 reports 28.86 /min where the workstation reports 28.84.
+
+## Raw capture
+
+A deployed device can still be recorded from, over the network:
+
+```sh
+python tools/rawcapture.py breathing-monitor.local 120 capture.csv
+./tools/replay/replay capture.csv
+```
+
+The wire format is not new — it is the same CSV the test fixtures use — so a
+capture taken in place drops straight into the analysis that produced the
+numbers above. Nothing is serialised until a client connects, so leaving it
+enabled costs one non-blocking accept per loop. See
+[docs/raw-capture.md](docs/raw-capture.md).
 
 ## Running it on hardware
 

@@ -142,6 +142,14 @@ setting one, rebooting the device with a firmware update, and reading it back
 unchanged. They are the device's settings, not Home Assistant's, so they also
 survive Home Assistant restarting or going away entirely.
 
+They are also *applied* at boot, not merely displayed. That distinction cost
+this project a real bug: ESPHome publishes a number's restored value without
+running its `set_action`, so for a while the device came back from a reboot
+showing a 10 um depth gate in Home Assistant while analysing with the gate off,
+and duly reported a breathing rate for an empty room. The configuration now
+pushes every restored value into the component explicitly at boot. If you add a
+knob of your own, add it there too.
+
 Two things can still lose a setting:
 
 - **A change made in the last minute before power is cut.** ESPHome batches

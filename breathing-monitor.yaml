@@ -25,6 +25,32 @@ esphome:
     name: michiel_dewilde.mr60_breathing
     version: "0.1.0"
 
+  # Restored knob values are published by the number entities at boot, but
+  # ESPHome does not run their set_action while doing so. Without this the
+  # values persist and are DISPLAYED correctly while never reaching the
+  # analysis: the device came back after a reboot showing a 10 um depth gate in
+  # Home Assistant while actually running with the gate off, and reported a
+  # breathing rate for an empty room. Push them in explicitly, late enough that
+  # the numbers have restored.
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          auto apply = [](float v, bool ok) { return ok && !std::isnan(v); };
+          if (apply(id(knob_update_interval).state, true))
+            id(radar)->set_update_interval_s(id(knob_update_interval).state);
+          if (apply(id(knob_rate_min).state, true))
+            id(radar)->set_band_min_bpm(id(knob_rate_min).state);
+          if (apply(id(knob_rate_max).state, true))
+            id(radar)->set_band_max_bpm(id(knob_rate_max).state);
+          if (apply(id(knob_stability).state, true))
+            id(radar)->set_stability_threshold_pct(id(knob_stability).state);
+          if (apply(id(knob_min_snr).state, true))
+            id(radar)->set_min_snr_db(id(knob_min_snr).state);
+          if (apply(id(knob_min_depth).state, true))
+            id(radar)->set_min_depth_um(id(knob_min_depth).state);
+          ESP_LOGI("mr60_breathing", "restored knob values applied");
+
 esp32:
   board: seeed_xiao_esp32c6
   framework:

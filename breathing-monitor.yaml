@@ -115,6 +115,21 @@ wifi:
   # measuring. The captive portal remains the way back in.
   reboot_timeout: 0s
 
+  # ESPHome defaults this to LIGHT, and on this board that default crashes.
+  #
+  # A deployed device restarted 27 times in one night. The panic, caught over
+  # USB, is an interrupt watchdog timeout, and the decoded stack is entirely
+  # inside the WiFi driver: esp_phy_disable, pm_sleep, pp_timer_do_process,
+  # ppTask, with sar_periph_ctrl_common on top. Light modem sleep powers the
+  # radio's PHY down and up continuously, and the SAR arbitration around it
+  # holds a spinlock; hold it past CONFIG_ESP_INT_WDT_TIMEOUT_MS, 300 ms here,
+  # and the chip resets.
+  #
+  # The cost is power, which is free: this board runs from a permanent USB
+  # supply. For something whose job is to keep measuring, a sleeping radio was
+  # never a good trade.
+  power_save_mode: none
+
 captive_portal:
 
 # improv_serial would add a second route in over USB, but its `improv` library

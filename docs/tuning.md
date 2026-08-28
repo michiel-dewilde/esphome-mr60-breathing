@@ -237,6 +237,30 @@ cat's shallow breathing is to count by eye than in the estimator.
 peak-to-peak intervals. When the two disagree by more than a couple of breaths,
 the higher one has been closer to the truth.
 
+## If the device keeps restarting
+
+Watch **Uptime** and **Reset reason**. Between them they distinguish every cause
+worth distinguishing, and each has a different fix:
+
+| reset reason | meaning | what to do |
+|---|---|---|
+| `Reboot request from esphome.ota` | you installed firmware | nothing |
+| `USB peripheral` | a serial connection reset it | nothing; opening the port resets this board |
+| `software via esp_restart` | the firmware restarted itself deliberately | usually the WiFi or API reboot timeout; both ship disabled here |
+| `interrupt watchdog` | interrupts were blocked past 300 ms | see below |
+| `task watchdog` | a task hogged the CPU | check `Loop time` |
+| `brownout` | the supply sagged | a power problem, not a software one |
+
+`interrupt watchdog` on this board came from **WiFi light modem sleep**, which is
+ESPHome's default. The radio's PHY is powered down and up continuously and the
+arbitration around it holds a spinlock; hold it too long and the chip resets.
+The shipped configuration sets `power_save_mode: none` for that reason. If you
+copy pieces of this configuration elsewhere, take that line with you.
+
+Diagnosing it needed the panic backtrace, which only appears on the USB console.
+Everything before that — three plausible theories about stacks, timeouts and the
+capture stream — was inference from timing, and two of the three were wrong.
+
 ## What this cannot do
 
 **Distance.** Range localisation was tested blind and failed — 0 to 1 hits out

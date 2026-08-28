@@ -79,7 +79,31 @@ heart runs 140–220 and would alias into the breathing harmonics.
 | M5 | raw capture over TCP | **done** — WiFi capture replays through the same harness |
 | M6 | provisioning, OTA, docs | **done** — 20 entities live in Home Assistant |
 | M7 | release `v0.1.0` | **done** |
-| M8 | field validation, long unattended run | **outstanding** — the gap that matters |
+| M8 | field validation, long unattended run | **mostly done** — see below |
+
+### What field validation has shown
+
+A cat asleep at 74 cm, measured through the deployed device over WiFi:
+**29.7 /min at 14 dB with 100 % window agreement** — the same animal that
+measured 28–30 /min on the bench. A human counting alongside gave 33.7 /min
+measured against ~35 counted for the portion she held still.
+
+One unattended night, 1424 overlapping windows, cat present for the first part
+and an empty room after she left:
+
+- **zero false positives** — of 824 empty windows, none reported a rate
+- **66 % of occupied windows** reported one, median 27 /min
+
+What that night also exposed, and what is still open:
+
+- The device **restarted 27 times**, averaging 13 minutes of uptime. The reset
+  reason is `software via esp_restart` — a deliberate restart, not a crash. The
+  WiFi and API reboot timeouts are the likeliest source and are now disabled,
+  but that explanation does not cover the shortest segments and the fix is not
+  yet confirmed over a long run.
+- Deep sleep is *shallow* breathing. A sleeping cat sits nearer an empty room in
+  amplitude than a restless one does, which is the opposite of the intuition and
+  matters when setting `min_depth_um`.
 
 ## Entities
 

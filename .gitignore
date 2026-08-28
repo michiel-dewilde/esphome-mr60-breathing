@@ -10,3 +10,10 @@ tools/bench/.pio/
 build.log
 upload.log
 _t.sh
+
+# Local-only flashing. secrets.yaml holds the API encryption key for a specific
+# installation and local-flash.yaml exists only to inject it, so that flashing
+# over USB does not knock that installation's Home Assistant offline. Neither
+# belongs in a public repository.
+secrets.yaml
+local-flash.yaml

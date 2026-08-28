@@ -257,6 +257,9 @@ arbitration around it holds a spinlock; hold it too long and the chip resets.
 The shipped configuration sets `power_save_mode: none` for that reason. If you
 copy pieces of this configuration elsewhere, take that line with you.
 
+Measured either side of that change, with a capture stream held open throughout:
+**5 restarts in 90 minutes before, none in 6 hours 25 minutes after.**
+
 Diagnosing it needed the panic backtrace, which only appears on the USB console.
 Everything before that — three plausible theories about stacks, timeouts and the
 capture stream — was inference from timing, and two of the three were wrong.

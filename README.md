@@ -79,7 +79,7 @@ heart runs 140–220 and would alias into the breathing harmonics.
 | M5 | raw capture over TCP | **done** — WiFi capture replays through the same harness |
 | M6 | provisioning, OTA, docs | **done** — 20 entities live in Home Assistant |
 | M7 | release `v0.1.0` | **done** |
-| M8 | field validation, long unattended run | **mostly done** — see below |
+| M8 | field validation, long unattended run | **done** — see below |
 
 ### What field validation has shown
 
@@ -94,16 +94,27 @@ and an empty room after she left:
 - **zero false positives** — of 824 empty windows, none reported a rate
 - **66 % of occupied windows** reported one, median 27 /min
 
-What that night also exposed, and what is still open:
+That night also exposed **27 restarts**, averaging 13 minutes of uptime. Two
+separate causes, both now fixed and confirmed:
 
-- The device **restarted 27 times**, averaging 13 minutes of uptime. The reset
-  reason is `software via esp_restart` — a deliberate restart, not a crash. The
-  WiFi and API reboot timeouts are the likeliest source and are now disabled,
-  but that explanation does not cover the shortest segments and the fix is not
-  yet confirmed over a long run.
-- Deep sleep is *shallow* breathing. A sleeping cat sits nearer an empty room in
-  amplitude than a restless one does, which is the opposite of the intuition and
-  matters when setting `min_depth_um`.
+| reset reason | cause | fix |
+|---|---|---|
+| `software via esp_restart` | ESPHome's WiFi and API reboot timeouts, firing when the network went quiet | both set to `0s` |
+| `interrupt watchdog` | WiFi **light modem sleep**, ESPHome's default, cycling the radio's PHY while the SAR arbitration holds a spinlock | `power_save_mode: none` |
+
+Measured before and after, with a capture stream held open throughout:
+
+| | before | after |
+|---|---|---|
+| spontaneous restarts | 5 in 90 minutes | **0 in 6 h 25 min** |
+
+The second cause was only findable from the panic backtrace on the USB console.
+Three theories preceded it — a stack overflow, the reboot timeouts, the capture
+stream — all reasoned from *when* the restarts happened, and two were wrong.
+
+One more thing worth knowing: **deep sleep is shallow breathing.** A sleeping cat
+sits nearer an empty room in amplitude than a restless one does, which is the
+opposite of the intuition and matters when setting `min_depth_um`.
 
 ## Entities
 
@@ -111,13 +122,18 @@ What that night also exposed, and what is still open:
 |---|---|
 | `Breathing rate` | `/min`, **`unknown` when the verdict does not hold** |
 | `Breathing detected` | the verdict as a boolean |
-| `Breathing status` | `ok` / `unstable` / `low_snr` / `too_shallow` / `no_data` / `warming_up` |
+| `Breathing status` | `ok` / `unstable` / `moving` / `low_snr` / `too_shallow` / `no_data` / `warming_up` |
 | `Breathing rate (time domain)` | independent estimate; prefer the higher when they disagree |
-| `Breathing stability`, `Breathing SNR`, `Movement depth` | diagnostics behind the verdict |
+| `Breathing stability`, `Breathing SNR` | quality of the rate — neither says anything is *there* |
+| `Movement depth` | amplitude, on the strongest range row. The only presence test |
+| `Motion` | amplitude stationarity. Above 2.5 the subject moved and no rate is published |
 | `Radar sample rate` | should sit at 4.88 Hz — the UART health check |
 | `Radar frame errors`, `Radar tile sets`, `Radar buffered` | link diagnostics |
+| `Uptime`, `Reset reason` | restart history and its cause, named |
+| `Heap free`, `Heap fragmentation`, `Loop time` | firmware health |
 | `Ambient light` | BH1750 |
 | `Status LED` | WS2812, off by default |
+| `Restart`, `Restart in safe mode` | buttons; a WiFi-managed device needs a way back |
 
 Tuning knobs are Home Assistant number entities and persist across reboots.
 See [docs/tuning.md](docs/tuning.md).

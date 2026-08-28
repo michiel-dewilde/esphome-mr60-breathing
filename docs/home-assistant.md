@@ -57,13 +57,18 @@ not the package cache.
 |---|---|
 | **Breathing rate** | the measurement. `unknown` whenever the verdict does not hold |
 | **Breathing detected** | the verdict as a boolean — the right trigger for automations |
-| **Breathing status** | why, when the rate is missing: `ok`, `unstable`, `low_snr`, `too_shallow`, `no_data`, `warming_up` |
+| **Breathing status** | why, when the rate is missing: `ok`, `unstable`, `moving`, `low_snr`, `too_shallow`, `no_data`, `warming_up` |
 | Breathing rate (time domain) | independent estimate; when the two disagree, the higher has been closer |
-| Breathing stability, SNR, Movement depth | the three numbers behind the verdict |
+| Breathing stability, Breathing SNR | how trustworthy the rate is — neither says anything is *present* |
+| Movement depth | amplitude on the strongest range row; the presence test |
+| Motion | amplitude stationarity; above 2.5 the subject moved and no rate is published |
 | Radar sample rate | should sit at 4.88 Hz — the health check that matters |
 | Radar frame errors, tile sets, buffered | link diagnostics |
+| Uptime, Reset reason | restart history, and the cause of the last one by name |
+| Heap free, Heap fragmentation, Loop time | firmware health |
 | Ambient light | BH1750 on the carrier board |
 | Status LED | WS2812, off by default |
+| Restart, Restart in safe mode | buttons |
 
 `Breathing rate` reports **`unknown`**, not `0`, when it cannot measure
 reliably. This is deliberate: `0` is a plausible-looking number that would land
@@ -196,6 +201,21 @@ shell_command:
 
 See [raw-capture.md](raw-capture.md).
 
+## Watching for restarts
+
+**Uptime** is the entity to graph. A straight climb is a healthy device; a
+sawtooth is one restarting. **Reset reason** names the cause of the most recent
+one, and the causes are genuinely distinguishable — an install reads
+`Reboot request from esphome.ota`, a serial connection reads `USB peripheral`,
+and a fault reads `interrupt watchdog` or `task watchdog`. The tuning guide has
+a table mapping each to its fix.
+
+This configuration disables the two restarts ESPHome performs by itself: the
+WiFi and API reboot timeouts, which fire when the network goes quiet. For a
+device whose job is to keep watching something, restarting because Home
+Assistant became unreachable is wrong twice over — it discards the analysis
+history, and it stops the measurement exactly when nobody is looking.
+
 ## API encryption
 
 `breathing-monitor.yaml` ships with a plain `api:` block so a first flash works
@@ -209,3 +229,18 @@ api:
 
 Generate one at <https://esphome.io/components/api.html> and put it in
 `secrets.yaml` next to the configuration.
+
+If you later flash over USB from a workstation, remember that the published
+configuration has no key: flashing it directly strips the one the device is
+using and Home Assistant will stop connecting until you reinstall. The way
+around it is a small local wrapper, kept out of version control, that includes
+the published configuration and adds only the key:
+
+```yaml
+# local-flash.yaml, gitignored
+packages:
+  base: !include breathing-monitor.yaml
+api:
+  encryption:
+    key: !secret api_encryption_key
+```

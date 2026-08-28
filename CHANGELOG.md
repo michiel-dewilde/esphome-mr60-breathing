@@ -2,57 +2,89 @@
 
 ## Unreleased
 
-Everything below came out of running v0.1.0 on a real Home Assistant
-installation for an afternoon. All of it was invisible on the bench.
+Everything here came out of running v0.1.0 on a real installation — an
+afternoon, a night alone, and a morning of chasing restarts. None of it was
+visible on the bench.
+
+### What it now measures
+
+A cat asleep at 74 cm, through the deployed device over WiFi: **29.7 /min at
+14 dB with 100 % window agreement** — the same animal the bench measured at
+28–30. Counted alongside by hand: 33.7 /min measured against ~35 counted, for
+the portion she held still.
+
+One unattended night, 1424 overlapping windows, cat present then an empty room:
+
+- **zero false positives** — of 824 empty windows, none reported a rate
+- **66 % of occupied windows** reported one, median 27 /min
+
+### Four defects only real use exposed
 
 - **An empty room was reported as breathing, confidently.** 57 /min, 100 %
   stability, 13.4 dB — a higher SNR than a real cat. Stability and SNR are both
   scale-invariant by construction, so a coherent disturbance of any amplitude
-  passes them. `min_depth_um` now defaults to 10 rather than shipping disabled,
-  and the capture is in the regression suite as the only case that ever passed
-  every gate the project had.
-- **The wide default band is the least safe setting**, now said plainly.
-  Narrowing to the subject removed that false positive outright while every real
-  cat survived unchanged.
+  passes them. `min_depth_um` now ships enabled at 20 µm.
+- **Depth was read from the wrong row.** The reference row is chosen for phase
+  coherence, not signal strength, and on a sleeping cat it held 2.9 µm while the
+  row that saw her held 59.7 — throwing away a good measurement as too shallow.
+  Depth is now taken from the strongest row.
+- **Movement was invisible.** Eighteen seconds of movement inside a 60 s window
+  pulled the reported rate from 33.7 to 19.7 /min with the verdict still reading
+  `ok`. A level threshold cannot catch it — averaged over a minute, movement
+  looks like a large calm animal. Stationarity can: settled subjects score
+  1.04–1.70, a cat that shifted scored 4.37. New `moving` status.
 - **Restored settings were displayed but never applied.** ESPHome publishes a
   number's restored value at boot without running its `set_action`, so after
   every reboot the device analysed with compile-time defaults while Home
   Assistant showed the stored ones. `on_boot` now pushes them in explicitly.
-- **The raw capture switch reported a state it did not have** — twice. First it
-  never published one; then it published what it had been asked for rather than
-  what resulted. It now reads the value back.
-- **Restart and safe-mode buttons**, whose absence left no way to reboot a
-  WiFi-managed device.
-- **Documented the package cache**, which lets an Install finish in seconds,
-  report success, flash, reboot, and contain none of your changes.
 
-Three of those are the same mistake in different clothes: trusting the value
-written instead of reading back the value that took effect.
+### The restarts
 
-### After a night unattended
+27 in one night, averaging 13 minutes of uptime. Two causes:
 
-The device ran alone for six and a half hours with a cat present for the first
-part and an empty room afterwards. 1424 overlapping windows.
+| reset reason | cause | fix |
+|---|---|---|
+| `software via esp_restart` | WiFi and API reboot timeouts firing when the network went quiet | both `0s` |
+| `interrupt watchdog` | WiFi light modem sleep cycling the PHY while the SAR arbitration holds a spinlock | `power_save_mode: none` |
 
-- **It never invented a breathing rate.** Across 824 windows of an empty room,
-  zero reported a rate, while 66 % of the occupied ones did. That is the result
-  the gates existed for.
-- **It rebooted 27 times**, averaging thirteen minutes of uptime. The main task
-  runs the whole ESPHome loop on a 3584-byte stack by default, and this
-  component's capture-write path was taking about a fifth of that in leaf
-  functions alone — with the reboots clustering while a capture client was
-  attached. Buffers moved off that stack, and the stack raised to 8192.
-- **`min_snr_db` lowered from 6 to 4.** At 6 it rejected a quarter of the
-  windows in which the cat was demonstrably present while changing no verdict
-  on any empty one.
-- **`min_depth_um` deliberately left at 20**, not raised into the middle of the
-  measured gap. One night samples one animal in a few positions, and the
-  weakest in-window reading on record is 45.8 µm.
-- **Corrected:** the claim that empty rooms score 33 % stability against
-  67–100 % for real targets. Over 824 empty windows, 66 % pass a 60 % gate.
-  Stability says the rate is trustworthy, not that anything is there.
-- Added reset-reason, heap and loop-time diagnostics, so the next reboot names
-  its own cause instead of being inferred.
+Measured with a capture stream held open throughout: **5 restarts in 90 minutes
+before, 0 in 6 h 25 min after.**
+
+The second was only findable from the panic backtrace on the USB console. Three
+theories preceded it — a stack overflow, the reboot timeouts, the capture stream
+— all reasoned from when the restarts happened, and two were wrong. The stack
+change was kept anyway: it reduced a real risk on a 3584-byte main task, and the
+stack now sits at 8192.
+
+### Recalibrated on real data
+
+1424 windows from that night, half occupied and half empty:
+
+- **`min_snr_db` 6 → 4.** At 6 it rejected a quarter of the windows in which the
+  cat was demonstrably present while changing no verdict on any empty one.
+- **`min_depth_um` left at 20**, not raised into the middle of the measured gap.
+  One night samples one animal in a few positions, and the weakest in-window
+  reading on record is 45.8 µm.
+
+### Corrections to earlier claims
+
+- Empty rooms do **not** score 33 % stability against 67–100 % for real targets.
+  That came from six recordings. Across 824 empty windows, 66 % pass a 60 %
+  gate. Stability says the rate is trustworthy, not that anything is there.
+- Range concentration is **not** a presence indicator. It runs higher in an
+  empty room than with a cat present — the reverse of what a few fixtures
+  suggested. Retracted before it reached the documentation.
+
+### Added
+
+Restart and safe-mode buttons; `Motion`, `Uptime`, `Reset reason`, `Heap free`,
+`Heap fragmentation` and `Loop time` diagnostics; a reset-reason table in the
+tuning guide; and a note that ESPHome caches remote packages for a day, which
+lets an Install finish in seconds, report success, flash, and contain none of
+your changes.
+
+Three of the defects above are the same mistake in different clothes: trusting
+the value written instead of reading back the value that took effect.
 
 ## v0.1.0 — 27 August 2026
 
@@ -127,7 +159,8 @@ reports 28.86 /min where the host reports 28.84.
 ### What is not proven
 
 - **Never run unattended.** Every measurement so far is 60–180 s with a person
-  in the room. This is the actual product and it is untested.
+  in the room. This is the actual product and it is untested. *(Superseded: see
+  the unreleased changes above.)*
 - **Not a safety device.** Do not use it where a missed reading matters.
 - **Distance is not attempted.** Range localisation was tested blind and
   falsified — 0 to 1 hits out of 4, one estimator ordered inversely against the
@@ -135,7 +168,8 @@ reports 28.86 /min where the host reports 28.84.
 - **Heart rate is not attempted.** Tiles arrive at 4.88 sets/s, so Nyquist is
   146 bpm; a cat's heart runs 140–220 and aliases into the breathing harmonics.
 - **`min_depth_um` ships disabled.** An honest floor has to be measured on the
-  installation rather than guessed.
+  installation rather than guessed. *(Superseded: it ships at 20 µm as of the
+  unreleased changes above.)*
 - **Range is fixed at 45.9–86.1 cm**, set by the eight range rows collection
   mode sends. Outside it, the sensor reports nothing.
 - The spectral estimate read low on both blind cat trials. The paced-human test

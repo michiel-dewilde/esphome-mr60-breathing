@@ -146,6 +146,17 @@ sensor:
     buffered_seconds:
       name: Radar buffered
 
+  - platform: debug
+    free:
+      name: Heap free
+      entity_category: diagnostic
+    fragmentation:
+      name: Heap fragmentation
+      entity_category: diagnostic
+    loop_time:
+      name: Loop time
+      entity_category: diagnostic
+
   # ------------------------------------------------------ the rest of the kit
   - platform: bh1750
     name: Ambient light
@@ -166,6 +177,11 @@ text_sensor:
     status:
       name: Breathing status
 
+  - platform: debug
+    reset_reason:
+      name: Reset reason
+      entity_category: diagnostic
+
 switch:
   - platform: mr60_breathing
     mr60_breathing_id: radar
@@ -180,6 +196,20 @@ button:
   - platform: safe_mode
     name: Restart in safe mode
     entity_category: config
+
+
+# ---------------------------------------------------------------- diagnosis
+#
+# A deployed device rebooted 27 times in one night, averaging 13 minutes of
+# uptime, and nothing in the entity list said why. These four answer that
+# without a USB cable: the reset reason survives the reboot and names the cause,
+# free heap catches a leak, and loop time catches the main loop being starved by
+# the analysis task.
+#
+# Cheap enough to leave on. Remove it once the cause is understood and fixed.
+
+debug:
+  update_interval: 30s
 
 i2c:
   sda: GPIO22

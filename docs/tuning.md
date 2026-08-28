@@ -284,9 +284,27 @@ Do not rely on it, and note which way round the two measurements fall. The same
 animal at **1 m**, in a different position, produced a range profile flatter
 than an empty room and was invisible - while at **1.2 m** here she was
 unmistakable. The nearer target was the undetectable one, so distance alone does
-not decide it. Geometry and whatever else is reflecting do, and the reading does
-not tell you which case you are in: a monotonic rise towards the last row is a
-hint, not a diagnosis.
+not decide it.
+
+The likeliest reason is that she was beside a **window**. At 60 GHz a glass pane
+is close to a mirror. It cannot bring a distant target into the range window -
+every bounced path is longer than the direct one, so multipath pushes apparent
+range outwards, never inwards. What it can do is illuminate the animal along
+several paths at once, so far more energy comes back, and the range-sidelobe
+leakage from a target sitting just beyond the last row lifts above the noise
+floor across every row. That is the shape observed: all eight rows raised,
+rising monotonically towards the edge. The empty capture from the same spot
+agrees, reading 8.8 um at the far row against 4.5 near - a static reflector out
+past the edge.
+
+This is a hypothesis with the physics on its side, not a measurement. Testing it
+is easy and has not been done: cover the glass, or re-aim so no window sits
+behind the subject, and repeat. If the far-row energy collapses, the mechanism
+is confirmed; if it does not, something else is amplifying an out-of-window
+target.
+
+Either way the reading does not tell you which case you are in. A monotonic rise
+towards the last row is a hint, not a diagnosis.
 
 The practical consequence for a nest or bed: **something lying beside it will
 be seen much like something lying in it.** Position for the subject you mean to

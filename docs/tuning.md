@@ -264,6 +264,33 @@ Diagnosing it needed the panic backtrace, which only appears on the USB console.
 Everything before that — three plausible theories about stacks, timeouts and the
 capture stream — was inference from timing, and two of the three were wrong.
 
+### Beyond 86 cm: less absolute than it sounds
+
+The documentation used to say the sensor reports nothing outside 45.9-86.1 cm.
+That is too strong. A target past the far edge does not vanish - its return
+piles into the last range row, because there is nowhere further for it to go.
+Measured with a cat about 1.5 m away and slightly off to one side:
+
+| range row | 45.9 | 51.7 | 57.4 | 63.1 | 68.9 | 74.6 | 80.4 | 86.1 |
+|---|---|---|---|---|---|---|---|---|
+| cat beyond the window | 66 | 64 | 48 | 8 | 25 | 35 | 65 | **170** |
+| the same spot, empty | 4.5 | 4.0 | 5.2 | 0.6 | 1.9 | 2.8 | 5.5 | 8.8 |
+
+It reported 28.3, 30.9 and 30.4 /min in that state, against a true rate of about
+29-30. So detection well past the window is possible, and the rate can even be
+right.
+
+Do not rely on it. The same animal at 1 m in a different position produced a
+range profile flatter than an empty room and was invisible. Whether an
+out-of-window target reaches the sensor at all depends on the geometry and on
+what else is reflecting, and there is no way to tell from the reading which case
+you are in - a monotonic rise towards the last row is a hint, not a diagnosis.
+
+The practical consequence for a nest or bed: **something lying beside it will
+be seen much like something lying in it.** Position for the subject you mean to
+watch, and treat presence as "something is breathing in the beam" rather than
+"the subject is where I put the sensor".
+
 ## What this cannot do
 
 **Distance.** Range localisation was tested blind and failed — 0 to 1 hits out

@@ -173,9 +173,11 @@ measurement), `Breathing detected` (the verdict) and `Breathing status` (why,
 when there is no rate). Dashboard cards, automations and the tuning knobs are
 in [docs/home-assistant.md](docs/home-assistant.md).
 
-**This is not a safety device.** It has never been validated for unattended
-monitoring, and it reports nothing at all when the subject is outside
-45.9-86.1 cm.
+**This is not a safety device.** It has never been validated as one, and its
+range window of 45.9-86.1 cm is where it works properly rather than a wall: a
+subject beyond the far edge can still be detected, with its energy piling into
+the last range row, or can be invisible - depending on geometry, and with no
+way to tell which from the reading.
 
 ## Raw capture
 

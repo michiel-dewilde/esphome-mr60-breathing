@@ -32,9 +32,16 @@ Before changing anything, read the diagnostics. They usually say what is wrong.
 
 ## `unstable` is usually correct
 
-The spectral peak moving between windows is what an empty room does — measured
-at 33 %, against 67–100 % for a real target. Before loosening the threshold,
-consider that the sensor may simply be right: the animal moved, or left.
+Before loosening the threshold, consider that the sensor may simply be right:
+the animal moved, or left.
+
+**Stability is a much weaker presence test than it first appeared.** An early
+reading of six recordings suggested empty rooms scored 33 % against 67–100 % for
+real targets. Measured properly — 824 windows from a room the cat had left —
+**66 % of them still pass a 60 % stability gate**, with a median of 66.7 %. An
+empty room holds a steady spectral peak far more often than those six recordings
+implied. Stability tells you the *rate* is trustworthy; it barely tells you
+anything is *there*. Depth does that.
 
 If it is wrong, the likely causes in order:
 

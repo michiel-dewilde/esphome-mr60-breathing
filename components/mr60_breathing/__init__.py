@@ -94,7 +94,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_STABILITY_WINDOW_SECONDS, default=30): cv.int_range(10, 60),
             cv.Optional(CONF_STABILITY_TOLERANCE_BPM, default=3.0): cv.float_range(1, 10),
             cv.Optional(CONF_STABILITY_THRESHOLD_PCT, default=60.0): cv.float_range(0, 100),
-            cv.Optional(CONF_MIN_SNR_DB, default=6.0): cv.float_range(0, 20),
+            cv.Optional(CONF_MIN_SNR_DB, default=4.0): cv.float_range(0, 20),
             # The amplitude floor. Stability and SNR are both scale-invariant
             # by construction, so without this a coherent signal of any
             # amplitude passes: a live empty room produced 57 /min at 2 um with

@@ -367,7 +367,18 @@ void dsp_config_defaults(dsp_config_t *cfg) {
   cfg->stability_window_s = 30.0f;
   cfg->stability_tol_bpm = 3.0f;
   cfg->stability_threshold_pct = 60.0f;
-  cfg->min_snr_db = 6.0f;
+  /*
+   * Lowered from 6 dB after the same night. At 6 dB this gate rejected 25 % of
+   * the windows in which the cat was demonstrably present, while rejecting
+   * nothing that depth and the movement gate had not already caught: across 824
+   * empty windows it changed no verdict at all. At 4 dB sensitivity rises from
+   * 66 % to 75 % of occupied windows with false positives still at zero.
+   *
+   * It is kept rather than removed because a room whose interference is loud
+   * as well as steady would need it, and this house has only ever offered a
+   * quiet one.
+   */
+  cfg->min_snr_db = 4.0f;
   /*
    * The amplitude floor, and it is not optional.
    *
@@ -380,9 +391,24 @@ void dsp_config_defaults(dsp_config_t *cfg) {
    *
    * Depth is the only quantity in the result that carries absolute amplitude.
    *
-   * Measured on the strongest range row, over the cat band: an empty room reads
-   * 7.7 um, the weakest real animal 45.8, and a cat asleep 55.1. 20 um sits
-   * between them with better than a factor of two either way.
+   * Calibrated on 1424 overlapping windows from one unattended night, half of
+   * them with a cat present and half with the room empty after she left. Depth
+   * comes out strongly bimodal: 807 windows between 8.6 and 15.7 um, 598 above
+   * 51, and only 19 in between. That empty valley from 19 to 51 um is what the
+   * threshold sits in.
+   *
+   * On that night depth alone separated the two populations completely - every
+   * window with a cat above it, every window without her below - which no other
+   * quantity here manages.
+   *
+   * The threshold stays at 20 rather than moving to the middle of that valley,
+   * and the reason matters. One night samples one animal in a handful of
+   * positions; depth falls off with distance and with how squarely the chest
+   * faces the sensor, and the weakest in-window reading ever recorded here is
+   * 45.8 um from a cat at 76 cm - with one at a metre, outside the range the
+   * tiles cover, reading 26.4. Thresholds of 20 and 30 performed identically
+   * across all 1424 windows, so centring it in the valley would buy nothing
+   * measured while spending margin on geometries that have not been seen yet.
    */
   cfg->min_depth_um = 20.0f;
 

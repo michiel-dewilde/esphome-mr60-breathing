@@ -1,10 +1,16 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 — 28 August 2026
 
 Everything here came out of running v0.1.0 on a real installation — an
 afternoon, a night alone, and a morning of chasing restarts. None of it was
 visible on the bench.
+
+v0.1.0 said the device had never run unattended and that this was the actual
+product. It has now: six and a half hours without a restart, and a night that
+never once invented a breathing rate for an empty room. What it has still not
+had is a *clean* unattended night — the one it ran was underneath a device
+restarting every thirteen minutes.
 
 ### What it now measures
 

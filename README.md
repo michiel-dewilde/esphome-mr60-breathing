@@ -3,9 +3,9 @@
 Breathing-rate sensing for Home Assistant on the Seeed MR60BHA2 60 GHz mmWave
 kit — including on animals, which the module's own firmware will not report.
 
-**v0.1.0.** Runs on hardware and reports to Home Assistant. It has not yet been
-left running unattended, and its accuracy against an animal rests on three human
-breath counts — see [What is not proven](CHANGELOG.md#what-is-not-proven).
+**v0.2.0.** Runs on hardware, reports to Home Assistant, and has been left alone
+overnight. Accuracy against an animal rests on four human breath counts. See
+[what is not proven](CHANGELOG.md#what-is-not-proven).
 
 ---
 

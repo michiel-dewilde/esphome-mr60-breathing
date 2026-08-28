@@ -69,6 +69,21 @@ class RawStream {
   void close_listener_();
   void send_(const char *data, size_t len);
 
+  /*
+   * Line buffers live here rather than on the stack, and that is not a style
+   * choice. The ESP-IDF main task runs with CONFIG_ESP_MAIN_TASK_STACK_SIZE,
+   * which defaults to 3584 bytes and carries the whole ESPHome loop: WiFi
+   * callbacks, the API, the radar parser and this. A 512-byte line buffer plus
+   * the frame beneath it was taking roughly a fifth of that in leaf functions
+   * alone, before lwIP's socket write added its own.
+   *
+   * Safe as members because there is one stream and every writer is the main
+   * loop; the analysis task never touches these.
+   */
+  char line_buf_[512];
+  char hex_buf_[264];
+  char head_buf_[64];
+
   uint16_t port_{6060};
   RawMode mode_{RAW_MODE_PHASE};
   bool enabled_{true};

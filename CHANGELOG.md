@@ -29,6 +29,31 @@ installation for an afternoon. All of it was invisible on the bench.
 Three of those are the same mistake in different clothes: trusting the value
 written instead of reading back the value that took effect.
 
+### After a night unattended
+
+The device ran alone for six and a half hours with a cat present for the first
+part and an empty room afterwards. 1424 overlapping windows.
+
+- **It never invented a breathing rate.** Across 824 windows of an empty room,
+  zero reported a rate, while 66 % of the occupied ones did. That is the result
+  the gates existed for.
+- **It rebooted 27 times**, averaging thirteen minutes of uptime. The main task
+  runs the whole ESPHome loop on a 3584-byte stack by default, and this
+  component's capture-write path was taking about a fifth of that in leaf
+  functions alone — with the reboots clustering while a capture client was
+  attached. Buffers moved off that stack, and the stack raised to 8192.
+- **`min_snr_db` lowered from 6 to 4.** At 6 it rejected a quarter of the
+  windows in which the cat was demonstrably present while changing no verdict
+  on any empty one.
+- **`min_depth_um` deliberately left at 20**, not raised into the middle of the
+  measured gap. One night samples one animal in a few positions, and the
+  weakest in-window reading on record is 45.8 µm.
+- **Corrected:** the claim that empty rooms score 33 % stability against
+  67–100 % for real targets. Over 824 empty windows, 66 % pass a 60 % gate.
+  Stability says the rate is trustworthy, not that anything is there.
+- Added reset-reason, heap and loop-time diagnostics, so the next reboot names
+  its own cause instead of being inferred.
+
 ## v0.1.0 — 27 August 2026
 
 First release. It works on hardware and reports to Home Assistant, but it has

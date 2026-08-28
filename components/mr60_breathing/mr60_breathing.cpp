@@ -217,7 +217,7 @@ void MR60Breathing::handle_frame_(int64_t t_us, uint16_t type,
     return;
   }
 
-  float re[DSP_ROWS], im[DSP_ROWS];
+  float *re = this->set_re_, *im = this->set_im_;
   memcpy(re, this->a_re_, sizeof(this->a_re_));
   memcpy(im, this->a_im_, sizeof(this->a_im_));
   dsp_decode_tile(payload, re + DSP_ROWS_PER_TILE, im + DSP_ROWS_PER_TILE);

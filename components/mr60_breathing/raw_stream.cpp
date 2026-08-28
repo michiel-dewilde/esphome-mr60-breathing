@@ -96,8 +96,8 @@ void RawStream::loop() {
       this->client_ = std::move(sock);
       this->dropped_ = 0;
 
-      char hdr[128];
-      int n = snprintf(hdr, sizeof(hdr),
+      char *hdr = this->line_buf_;
+      int n = snprintf(hdr, sizeof(this->line_buf_),
                        "#mr60raw stream=1 mode=%s rows=%d\n",
                        this->mode_ == RAW_MODE_TILES ? "tiles" : "phase",
                        DSP_ROWS);
@@ -144,11 +144,12 @@ void RawStream::write_phase(int64_t t_us, const float *re, const float *im) {
   if (this->client_ == nullptr || this->mode_ != RAW_MODE_PHASE)
     return;
 
-  char line[512];
-  int o = snprintf(line, sizeof(line), "%lld", (long long) t_us);
-  for (int r = 0; r < DSP_ROWS && o > 0 && o < (int) sizeof(line) - 32; r++)
-    o += snprintf(line + o, sizeof(line) - o, ",%.0f,%.0f", re[r], im[r]);
-  o += snprintf(line + o, sizeof(line) - o, "\n");
+  char *line = this->line_buf_;
+  const int cap = (int) sizeof(this->line_buf_);
+  int o = snprintf(line, cap, "%lld", (long long) t_us);
+  for (int r = 0; r < DSP_ROWS && o > 0 && o < cap - 32; r++)
+    o += snprintf(line + o, cap - o, ",%.0f,%.0f", re[r], im[r]);
+  o += snprintf(line + o, cap - o, "\n");
   this->send_(line, (size_t) o);
 }
 
@@ -160,17 +161,17 @@ void RawStream::write_tile(int64_t t_us, uint16_t type, const uint8_t *payload,
   /* One line per frame, offset 0, whole payload. The reassembler on the other
    * end accepts a single chunk that covers the payload just as happily as the
    * 64-byte chunks the USB bridge had to use. */
-  char head[64];
-  int n = snprintf(head, sizeof(head), "R,%lld,%04X,%u,0,", (long long) t_us,
-                   type, len);
+  char *head = this->head_buf_;
+  int n = snprintf(head, sizeof(this->head_buf_), "R,%lld,%04X,%u,0,",
+                   (long long) t_us, type, len);
   this->send_(head, (size_t) n);
 
-  char hex[257];
+  char *hex = this->hex_buf_;
   size_t o = 0;
   for (uint16_t i = 0; i < len; i++) {
     hex[o++] = HEX[payload[i] >> 4];
     hex[o++] = HEX[payload[i] & 0x0F];
-    if (o >= sizeof(hex) - 2) {
+    if (o >= sizeof(this->hex_buf_) - 2) {
       this->send_(hex, o);
       o = 0;
     }

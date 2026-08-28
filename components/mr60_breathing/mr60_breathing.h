@@ -123,6 +123,12 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   float a_re_[DSP_ROWS_PER_TILE];
   float a_im_[DSP_ROWS_PER_TILE];
 
+  /* Scratch for assembling a complete set. Members rather than locals for the
+   * same reason as the stream's line buffers: the main task's stack is small
+   * and shared with everything ESPHome does. */
+  float set_re_[DSP_ROWS];
+  float set_im_[DSP_ROWS];
+
   // --- statistics -----------------------------------------------------------
   uint32_t frames_ok_{0};
   uint32_t header_errors_{0};

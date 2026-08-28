@@ -54,6 +54,16 @@ esp32:
     # ESP-IDF is not a preference here: ESPHome has no Arduino support for the
     # C6 variant.
     type: esp-idf
+    sdkconfig_options:
+      # The main task carries the whole ESPHome loop - WiFi callbacks, the API,
+      # the radar parser and the capture stream - on a default of 3584 bytes.
+      # A deployed device rebooted 27 times in one night, averaging 13 minutes
+      # of uptime, and the reboots clustered while a capture client was
+      # attached: the write path is the deepest thing this component does. The
+      # large buffers have moved off the stack, and this raises the ceiling as
+      # well, because guessing at a margin one has never measured is how the
+      # first 3584 bytes ran out.
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
 
 external_components:
   # Local checkout, for working on the component itself. The published config

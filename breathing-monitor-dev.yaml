@@ -87,12 +87,24 @@ api:
   # encryption:
   #   key: !secret api_encryption_key
 
+  # ESPHome reboots a device that has been out of touch with Home Assistant for
+  # this long, on the theory that a restart may fix the connection. For a sensor
+  # that is watching something, that theory is wrong twice over: it throws away
+  # the analysis buffer, and it stops the measurement precisely when nobody is
+  # looking. A deployed device here reported "software via esp_restart" as its
+  # reset reason, which is a deliberate restart rather than a crash, and this is
+  # the likeliest thing issuing it. Measuring is the job; reporting is secondary.
+  reboot_timeout: 0s
+
 ota:
   - platform: esphome
 
 wifi:
   ap:
     ssid: "Breathing Monitor Setup"
+  # Same reasoning as the API timeout above: losing WiFi is not a reason to stop
+  # measuring. The captive portal remains the way back in.
+  reboot_timeout: 0s
 
 captive_portal:
 
@@ -155,6 +167,14 @@ sensor:
       name: Radar tile sets
     buffered_seconds:
       name: Radar buffered
+
+  # Uptime makes a restart visible in Home Assistant's own history: the value
+  # drops to zero and the graph shows exactly when, without anyone polling the
+  # device to notice.
+  - platform: uptime
+    name: Uptime
+    entity_category: diagnostic
+    update_interval: 30s
 
   - platform: debug
     free:

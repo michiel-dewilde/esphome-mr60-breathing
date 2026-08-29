@@ -223,15 +223,52 @@ number that changes more often, not a number that is fresher.
 ## Accuracy, honestly
 
 Against a **paced** human breathing at a known 30 /min, the device read 30.0 to
-30.1 across eight consecutive updates — essentially exact. That is the easy
-case: deliberate breathing is strong, regular and nearly sinusoidal.
+30.1 across eight consecutive updates — essentially exact.
 
-Against a **cat**, the reported rate is accurate to about **±4 /min**, measured
-against three human counts. Both blind trials read *low*, and the two largest errors were on
-the two fastest rates, which suggested a low bias at high rates. The paced test
-above argues against that: a known 30 /min read 30.0, where a biased estimator
-should have read about 27. The residual error is more likely in how hard a
-cat's shallow breathing is to count by eye than in the estimator.
+**The +/-4 breaths per minute this project used to claim against a cat has been
+retracted. It was measuring the protocol, not the estimator.**
+
+Three of the four counts were taken against start and stop signals sent over a
+chat interface, which arrive late. Reconstructing the window each count implies:
+
+| trial | measured | counted | window that implies | excess |
+|---|---|---|---|---|
+| blind trial 1 | 26.5 /min | 30 | 67.9 s | **+7.9 s** |
+| blind trial 2 | 34.6 /min | 39 | 67.6 s | **+7.6 s** |
+
+Two trials on different days imply the same excess to within 0.3 s, and the
+observer reported at the time, unprompted, having counted past the stop signal
+on the second. Counting for 68 seconds and dividing by 60 overstates the rate by
+13 %, which is the whole of the apparent error.
+
+The discriminator is the fourth trial, where truth came from the pacing rather
+than from counting inside a signalled window - and it was exact. Every trial
+whose truth depended on the signalling read low; the one that did not, did not.
+
+### What can honestly be claimed
+
+- Against a **paced human**: essentially exact, 0.1 /min.
+- Against an **animal**: *not properly quantified*. No count has been taken with
+  a window synchronised to the device's own clock.
+- **Self-consistency** across five sessions, two mountings and two signal paths:
+  28.6, 28.8, 29.3, 29.6, 29.7 /min on the same resting cat, a spread of
+  1.1 /min. That is not accuracy, but it bounds the noise.
+
+The evidence is consistent with an error well under 2 /min. It is stated as
+unquantified rather than as a number, because no measurement supports a number.
+
+### How to count properly
+
+Let the observer define both ends of the window, so the experimenter's latency
+cannot enter it:
+
+1. The observer says when they start, and counts on their own clock.
+2. They count for a self-timed 60 s.
+3. They report the count and both wall-clock times.
+
+The analysis window is then taken from the device's own timestamps between those
+two moments. Signalling delay then affects when a message arrives, not where the
+window falls.
 
 **Breathing rate (time domain)** is a second, independent estimate from
 peak-to-peak intervals. When the two disagree by more than a couple of breaths,

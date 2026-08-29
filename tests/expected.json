@@ -55,7 +55,7 @@
         "stability_pct": 100.0
       },
       "counted_bpm": 30,
-      "note": "Estimate ran 3.5 /min low against the count."
+      "note": "Counted 30 against 26.5 measured. The gap is almost certainly the counting window: start and stop were signalled over a chat interface, and 30 breaths at the measured rate implies 67.9 s rather than 60. Blind trial 2 independently implies 67.6 s. Treat counted_bpm here as unsynchronised."
     },
     {
       "name": "blind trial 2, undisclosed distance",
@@ -68,7 +68,7 @@
         "stability_pct": 100.0
       },
       "counted_bpm": 39,
-      "note": "Estimate ran 4.4 /min low; the count may include extra breaths."
+      "note": "Counted 39 against 34.6 measured, and the observer reported at the time having counted past the stop signal. 39 breaths at the measured rate implies 67.6 s rather than 60, matching blind trial 1 to within 0.3 s. Treat counted_bpm here as unsynchronised."
     },
     {
       "name": "resting adult at 60 cm",

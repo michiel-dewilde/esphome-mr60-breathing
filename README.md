@@ -40,10 +40,17 @@ Live on the device, against a human deliberately pacing at 30 /min: **30.0 to
 breathing is strong and regular — but it is an end-to-end check against a known
 truth, and it argues against the low-rate bias the cat trials hinted at.
 
-**Accuracy is ±4 breaths/min.** Both blind trials read low, and the two largest
-errors were on the two fastest rates, so there may be a low bias at high rates.
-That is unproven at n=3 and stated rather than hidden. A time-domain estimate
-is published alongside; when the two disagree, the higher has been closer.
+**Accuracy against an animal is not properly quantified**, and the ±4 /min this
+project used to claim has been **retracted**. Three of the four counts were taken
+against start and stop signals sent over a chat interface: both blind trials
+imply a counting window about 7.8 seconds too long, agreeing to 0.3 s, which
+accounts for the entire apparent error. The fourth, a human pacing at a known
+30 /min with truth independent of that signalling, read 30.0–30.1.
+
+What is supported: exact against a paced human, and self-consistent to 1.1 /min
+across five sessions on the same cat over two mountings. See
+[docs/tuning.md](docs/tuning.md) for the arithmetic and a counting protocol that
+avoids the problem.
 
 **One band does not fit both.** The defaults are tuned for an animal. A resting
 adult needs `rate_min_bpm: 6`, `rate_max_bpm: 30`, `highpass_hz: 0.05` — the

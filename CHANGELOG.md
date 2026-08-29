@@ -74,6 +74,15 @@ stack now sits at 8192.
 
 ### Corrections to earlier claims
 
+- The **±4 /min accuracy figure is withdrawn.** Three of the four human counts
+  were taken against start and stop signals sent over a chat interface. Both
+  blind trials imply a counting window 7.9 and 7.6 seconds too long - agreeing
+  to 0.3 s - which accounts for the entire apparent error, and the observer
+  reported at the time having counted past the stop signal. The one trial whose
+  truth did not depend on that signalling, a human pacing at a known 30 /min,
+  read 30.0-30.1. Accuracy against an animal is now stated as unquantified,
+  because no measurement supports a number.
+
 - Empty rooms do **not** score 33 % stability against 67–100 % for real targets.
   That came from six recordings. Across 824 empty windows, 66 % pass a 60 %
   gate. Stability says the rate is trustworthy, not that anything is there.
@@ -121,7 +130,8 @@ reset clears it.
 | resting adult, recorded | 11.4 /min | — | — |
 | **empty room** | **no pattern** | — | correctly rejected |
 
-**±4 breaths/min against an animal.** Against a human deliberately pacing at a
+**±4 breaths/min against an animal.** *(Retracted — see the unreleased section:
+that figure measured the counting protocol, not the estimator.)* Against a human deliberately pacing at a
 known rate it was essentially exact, but that is the easy case: paced breathing
 is strong, regular and nearly sinusoidal.
 

@@ -293,15 +293,25 @@ range outwards, never inwards. What it can do is illuminate the animal along
 several paths at once, so far more energy comes back, and the range-sidelobe
 leakage from a target sitting just beyond the last row lifts above the noise
 floor across every row. That is the shape observed: all eight rows raised,
-rising monotonically towards the edge. The empty capture from the same spot
-agrees, reading 8.8 um at the far row against 4.5 near - a static reflector out
-past the edge.
+rising monotonically towards the edge.
 
-This is a hypothesis with the physics on its side, not a measurement. Testing it
-is easy and has not been done: cover the glass, or re-aim so no window sits
-behind the subject, and repeat. If the far-row energy collapses, the mechanism
-is confirmed; if it does not, something else is amplifying an out-of-window
-target.
+**This is a hypothesis with the physics on its side, and it is untested.** One
+piece of supporting evidence has since been withdrawn: an empty capture appeared
+to show a static reflector past the edge, 8.8 um at the far row against 4.5
+near. A longer, cleaner empty capture from the same mounting gave 1.7 um far
+against 3.1 near - no far-row rise at all. The first reading was probably not of
+an empty room.
+
+That also rules out the easy version of the experiment. Covering the glass and
+re-measuring an empty room proves nothing when the far-row energy is already at
+the floor: there is nothing left to collapse, and a null result cannot
+distinguish "the window does not matter" from "there was nothing there tonight".
+
+A real control needs the *subject* out of window, since a target's return is
+what the hypothesis is about: put the animal back beside the glass at about
+1.2 m, capture, cover the glass, capture again, and compare. Until someone does
+that, treat the window as a plausible unproven explanation rather than a known
+mechanism.
 
 Either way the reading does not tell you which case you are in. A monotonic rise
 towards the last row is a hint, not a diagnosis.

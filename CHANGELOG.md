@@ -1,5 +1,74 @@
 # Changelog
 
+## v0.2.1 — 2 September 2026
+
+A second unattended run, and a second failure that no entity reported: after
+55 hours the analysis stopped producing results, and every breathing entity
+held the values it had last published. The radar was fine throughout — tiles
+kept arriving at 4.878 sets/s and the diagnostics published from the main loop
+kept moving — so from Home Assistant the device looked alive and merely
+uninteresting. It sat like that for 28 hours, and was only noticed because
+someone asked whether it was still working.
+
+### The defect
+
+The analysis task decides it is due by comparing `esp_timer_get_time()` against
+the timestamp of its last run. A reading that lands ahead of the clock makes
+that difference negative for the rest of the run: no analysis, no publish, and
+no symptom, because the task goes on draining the staging ring on every pass,
+so the UART side reports nothing wrong.
+
+Two more ways to fail the same way were found while fixing it, and both are now
+closed as well:
+
+- **Stale history analyses cleanly.** `dsp_analyze` takes the most recent
+  `window_s` relative to the newest sample *it holds*, never relative to now.
+  A radar that stops sending therefore leaves a buffer that still analyses and
+  still returns the rate it last saw. A cat that left an hour ago would have
+  gone on breathing in Home Assistant indefinitely.
+- **Nothing measured the analysis itself.** Every breathing entity holding its
+  last value is indistinguishable, in Home Assistant, from a quiet room.
+
+### Four guards
+
+- **The clock is no longer assumed monotonic.** The analysis task clamps its
+  own last-run timestamp when the clock moves backwards, and the main loop does
+  the same for the last-tile timestamp, which had disarmed the collection-mode
+  re-arm the same way.
+- **A starved analysis is refused, and its history discarded.** With no new
+  sample for 15 s — three collection re-arms — the verdict becomes `no_data`
+  with an `unknown` rate, and the ring is dropped so that when samples return
+  the gap is not resampled across as though it were signal. Warming up again
+  from empty costs about 7 s.
+- **A verdict now comes out every interval, whatever it is.** Publishing
+  nothing while starved is what let the entities sit on stale values, and it is
+  also what would have starved the watchdog below into restarting a device
+  whose analysis works and simply has nothing to work on.
+- **An analysis watchdog.** Tiles arriving while no result comes out for five
+  minutes (or ten update intervals, whichever is longer) restarts the device.
+  It is conditioned on tiles arriving, so a radar that is genuinely absent
+  leaves the device up and reachable rather than in a reboot loop.
+
+### A radar that streams frozen content
+
+The same investigation named one more way to fail quietly, and this release
+closes it too: a radar that keeps sending while its content has stopped
+changing — a repeated tile, or constants. Every check in the firmware passed in
+that state. The frames are well formed, both checksums are right, the set
+counter climbs and the sample rate sits at its nominal 4.88 Hz. A constant
+phase reads as a flat signal, so it presents as an empty room, and the device
+would report a plausible nothing for as long as it ran.
+
+A set bit-identical to the one before it is now dropped before the analysis
+sees it, counted into `Radar frame errors`, and named once in the log. Thirty-
+two values derived from live returns are never identical twice running, so the
+first repeat is enough; a coincidence would cost one sample in five hundred.
+The drop starves the analysis, and the rule above turns that into an honest
+`no_data` rather than an empty-room verdict.
+
+`dsp.c` gains one function (`dsp_no_data`) and no existing line changes; the
+regression fixtures are unaffected by construction.
+
 ## v0.2.0 — 28 August 2026
 
 Everything here came out of running v0.1.0 on a real installation — an

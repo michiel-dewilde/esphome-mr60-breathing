@@ -510,6 +510,8 @@ static void fail(dsp_result_t *out, dsp_status_t s) {
   out->rate_td_bpm = NAN;
 }
 
+void dsp_no_data(dsp_result_t *out) { fail(out, DSP_STATUS_NO_DATA); }
+
 int dsp_analyze(const dsp_state_t *st, const dsp_config_t *cfg,
                 dsp_result_t *out) {
   fail(out, DSP_STATUS_WARMING_UP);

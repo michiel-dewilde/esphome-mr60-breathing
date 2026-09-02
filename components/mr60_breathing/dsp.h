@@ -118,6 +118,15 @@ typedef struct {
 
 const char *dsp_status_name(dsp_status_t s);
 
+/*
+ * Fill in a result that refuses to report: status no_data, both rates NAN.
+ *
+ * For a caller that decides on grounds the analysis cannot see - a buffer that
+ * has stopped being fed, say - so that a refusal reaching Home Assistant looks
+ * the same whoever made it.
+ */
+void dsp_no_data(dsp_result_t *out);
+
 /* Opaque only by convention: the firmware needs the size to place it in a
  * static allocation rather than on a task stack. */
 typedef struct {

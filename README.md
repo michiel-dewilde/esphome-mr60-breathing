@@ -3,8 +3,10 @@
 Breathing-rate sensing for Home Assistant on the Seeed MR60BHA2 60 GHz mmWave
 kit — including on animals, which the module's own firmware will not report.
 
-**v0.2.0.** Runs on hardware, reports to Home Assistant, and has been left alone
-overnight. Accuracy against an animal rests on four human breath counts. See
+**v0.2.1.** Runs on hardware, reports to Home Assistant, and has been left alone
+overnight. Accuracy against an animal rests on four human breath counts. Two
+unattended runs have now each ended in a failure that reported nothing wrong;
+v0.2.1 is the guards against both. See
 [what is not proven](CHANGELOG.md#what-is-not-proven).
 
 ---
@@ -123,19 +125,44 @@ One more thing worth knowing: **deep sleep is shallow breathing.** A sleeping ca
 sits nearer an empty room in amplitude than a restless one does, which is the
 opposite of the intuition and matters when setting `min_depth_um`.
 
+### The failure mode that reports nothing wrong
+
+A later run stopped analysing after 55 hours while the radar stayed healthy:
+tiles kept arriving at 4.878 sets/s, the link diagnostics kept publishing, and
+every breathing entity held the value it had last published. Home Assistant
+showed a plausible status, a plausible depth and no error for 28 hours.
+
+The cause was a clock reading that landed ahead of the analysis task's
+last-run timestamp, which makes "is it due yet" false forever. Two neighbouring
+ways to fail silently came out of the same investigation: `dsp_analyze` windows
+on the newest sample *it holds* rather than on now, so a buffer nobody feeds
+still analyses and still returns the last rate it saw; and nothing anywhere
+measured whether the analysis was still producing.
+
+Four guards close them — a monotonicity clamp on both timestamps, a staleness
+refusal that publishes `no_data` and discards the buffered history, a verdict
+published every interval whatever it says, and a watchdog that restarts the
+device when tiles arrive but no result does. A fifth case found while fixing
+them is closed the same way: a radar that keeps streaming frozen content passes
+every frame check there is, so a set identical to the one before it is now
+dropped before the analysis sees it and counted as a link error. The
+general lesson is the one this project keeps relearning: **an entity holding
+its last value looks exactly like a quiet room.** Anything that can stop
+producing needs something else measuring that it still is.
+
 ## Entities
 
 | entity | notes |
 |---|---|
 | `Breathing rate` | `/min`, **`unknown` when the verdict does not hold** |
 | `Breathing detected` | the verdict as a boolean |
-| `Breathing status` | `ok` / `unstable` / `moving` / `low_snr` / `too_shallow` / `no_data` / `warming_up` |
+| `Breathing status` | `ok` / `unstable` / `moving` / `low_snr` / `too_shallow` / `no_data` / `warming_up`. `no_data` also covers a buffer that stopped being fed |
 | `Breathing rate (time domain)` | independent estimate; prefer the higher when they disagree |
 | `Breathing stability`, `Breathing SNR` | quality of the rate — neither says anything is *there* |
 | `Movement depth` | amplitude, on the strongest range row. The only presence test |
 | `Motion` | amplitude stationarity. Above 2.5 the subject moved and no rate is published |
 | `Radar sample rate` | should sit at 4.88 Hz — the UART health check |
-| `Radar frame errors`, `Radar tile sets`, `Radar buffered` | link diagnostics |
+| `Radar frame errors`, `Radar tile sets`, `Radar buffered` | link diagnostics; frame errors include sets the radar repeated verbatim |
 | `Uptime`, `Reset reason` | restart history and its cause, named |
 | `Heap free`, `Heap fragmentation`, `Loop time` | firmware health |
 | `Ambient light` | BH1750 |

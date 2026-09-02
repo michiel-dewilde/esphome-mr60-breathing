@@ -137,6 +137,15 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   uint32_t overflows_{0};
   uint32_t tile_sets_{0};
   uint32_t unpaired_tiles_{0};
+  uint32_t repeated_sets_{0};
+
+  /* Previous decoded set, for the one check that catches a radar which keeps
+   * streaming while its content has stopped changing. Every other test passes
+   * in that state: the frames are well formed, the checksums are right and the
+   * set rate is nominal. */
+  bool have_prev_set_{false};
+  float prev_re_[DSP_ROWS];
+  float prev_im_[DSP_ROWS];
 
   // Rolling estimate of the tile-set rate, the health check on the UART.
   static const int RATE_HISTORY = 32;
@@ -148,6 +157,17 @@ class MR60Breathing : public Component, public uart::UARTDevice {
   int64_t last_tile_us_{0};
   uint32_t last_collection_cmd_ms_{0};
   uint32_t last_diag_ms_{0};
+
+  /* When the analysis task last took a sample out of the staging ring. Kept
+   * here rather than read back from the ring, because declaring the history
+   * stale is what clears the ring, and the two must not erase each other. */
+  int64_t last_sample_us_{0};
+
+  /* When an analysis result last reached the entities. The watchdog in loop()
+   * measures from here: the analysis stopping while tiles keep arriving is a
+   * failure the entities themselves cannot show, because they simply hold
+   * their last values. */
+  uint32_t last_result_ms_{0};
 
   void publish_result_(const dsp_result_t &r);
   void drain_staging_();

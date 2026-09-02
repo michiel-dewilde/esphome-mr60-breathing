@@ -1,5 +1,6 @@
 #include "mr60_breathing.h"
 
+#include "esphome/core/application.h"
 #include "esphome/core/log.h"
 
 #include <esp_timer.h>
@@ -42,6 +43,15 @@ static const uint8_t CMD_COLLECTION_OFF[] = {0x01, 0x00, 0x00, 0x00,
 static const uint32_t COLLECTION_RETRY_MS = 5000;
 static const uint32_t DIAG_PERIOD_MS = 10000;
 
+/* Treat the analysis buffer as stale when its newest sample is older than
+ * this. Three collection re-arms have had their chance by then, so whatever
+ * stopped the tiles is not the RAM byte reverting. */
+static const int64_t STALE_SAMPLE_US = 15000000;
+
+/* Reboot when tiles are arriving but no analysis result has come out for this
+ * long - or for ten update intervals, whichever is longer. */
+static const uint32_t ANALYSIS_WATCHDOG_MS = 300000;
+
 static inline uint8_t xor_not(const uint8_t *p, size_t n) {
   uint8_t c = 0;
   for (size_t i = 0; i < n; i++)
@@ -73,6 +83,7 @@ void MR60Breathing::setup() {
 
   dsp_set_yield_hook(dsp_yield_to_scheduler);
   this->raw_.setup();
+  this->last_result_ms_ = millis();
 
   /*
    * The analysis runs in its own task at the same priority as the ESPHome main
@@ -110,6 +121,10 @@ void MR60Breathing::dump_config() {
   ESP_LOGCONFIG(TAG, "  update interval %.0f s%s", this->update_interval_s_,
                 this->update_interval_s_ <= 0.0f ? " (as fast as possible)" : "");
   ESP_LOGCONFIG(TAG, "  analysis state  %u bytes", (unsigned) sizeof(dsp_state_t));
+  ESP_LOGCONFIG(TAG, "  stale after     %.0f s without a sample",
+                (float) STALE_SAMPLE_US / 1e6f);
+  ESP_LOGCONFIG(TAG, "  watchdog        restart after %.0f s without a result",
+                (float) ANALYSIS_WATCHDOG_MS / 1000.0f);
   ESP_LOGCONFIG(TAG, "  raw capture     %s, %s mode",
                 this->raw_.enabled() ? "listening" : "off",
                 this->raw_.mode() == RAW_MODE_TILES ? "tiles" : "phase");
@@ -224,11 +239,47 @@ void MR60Breathing::handle_frame_(int64_t t_us, uint16_t type,
 
   this->raw_.write_phase(this->a_time_, re, im);
 
+  /*
+   * A set identical to the one before it is not a measurement.
+   *
+   * The failure this catches is a radar that goes on streaming with its
+   * content frozen - a repeated tile, or constants. Nothing else here can see
+   * it: the frames are well formed, the header and payload checksums are
+   * right, the set counter climbs and the sample rate sits at its nominal
+   * 4.88 Hz. Downstream it reads as a flat phase, which is to say as an empty
+   * room, so the device would report a plausible nothing indefinitely.
+   *
+   * Thirty-two values derived from live returns are never bit-identical twice
+   * in a row, so dropping the first repeat is safe; a genuine coincidence
+   * costs one sample out of five hundred, which the resampler does not even
+   * notice. Dropping them starves the analysis, and the staleness rule in the
+   * task turns that into an honest no_data.
+   */
+  const bool frozen = this->have_prev_set_ &&
+                      memcmp(re, this->prev_re_, sizeof(this->prev_re_)) == 0 &&
+                      memcmp(im, this->prev_im_, sizeof(this->prev_im_)) == 0;
+  if (frozen && this->repeated_sets_ == 0)
+    ESP_LOGW(TAG, "radar is repeating its last set; treating it as no data");
+  if (frozen)
+    this->repeated_sets_++;
+  memcpy(this->prev_re_, re, sizeof(this->prev_re_));
+  memcpy(this->prev_im_, im, sizeof(this->prev_im_));
+  this->have_prev_set_ = true;
+
+  /*
+   * Everything below the staging push still counts a frozen set: it arrived,
+   * it was well formed, and the link statistics describe the link. Only the
+   * analysis is spared it, because it is not a measurement.
+   */
+
   // Hand the set to the analysis task rather than writing it directly: the
   // task owns the DSP ring while it is working on it.
   uint32_t w = this->staging_write_;
   uint32_t next = (w + 1) % STAGING_SLOTS;
-  if (next == this->staging_read_) {
+  if (frozen) {
+    // nothing to analyse; the staleness rule in the task turns this into
+    // no_data once the buffer has aged out
+  } else if (next == this->staging_read_) {
     this->staging_dropped_++;  // task has stalled; better to drop than corrupt
   } else {
     StagedSet &slot = this->staging_[w];
@@ -290,10 +341,18 @@ void MR60Breathing::loop() {
   this->raw_.loop();
 
   const uint32_t now = millis();
+  const int64_t now_us = esp_timer_get_time();
+
+  /* A tile timestamp from the future would make since_tile_ms negative for the
+   * rest of the run, which silently disarms both the re-arm below and the
+   * watchdog further down. The analysis task lost itself exactly this way, so
+   * do not assume the clock only moves forward. */
+  if (this->last_tile_us_ > now_us)
+    this->last_tile_us_ = now_us;
 
   // Collection mode is a RAM byte; a radar reset silently reverts to normal
   // reporting, and the only symptom is that tiles stop arriving.
-  int64_t since_tile_ms = (esp_timer_get_time() - this->last_tile_us_) / 1000;
+  int64_t since_tile_ms = (now_us - this->last_tile_us_) / 1000;
   if (since_tile_ms > (int64_t) COLLECTION_RETRY_MS &&
       (now - this->last_collection_cmd_ms_) > COLLECTION_RETRY_MS) {
     ESP_LOGW(TAG, "no tiles for %lld ms, re-enabling collection mode",
@@ -309,6 +368,7 @@ void MR60Breathing::loop() {
   if (this->result_pending_) {
     dsp_result_t r = this->result_;
     this->result_pending_ = false;
+    this->last_result_ms_ = now;
     this->publish_result_(r);
   }
 
@@ -316,12 +376,40 @@ void MR60Breathing::loop() {
     this->last_diag_ms_ = now;
     this->publish_diagnostics_();
   }
+
+  /*
+   * Analysis watchdog.
+   *
+   * Tiles arriving while no result comes out means the analysis task is no
+   * longer producing, and nothing in the entity list says so: every breathing
+   * entity simply holds the value it last published. A deployed device sat
+   * like that for 28 hours, reporting a plausible status and a plausible
+   * depth, and only the diagnostics that are published from this loop kept
+   * moving. Restarting costs the ring buffer - about 100 s of history - and
+   * gets the measurement back; not restarting costs the measurement outright.
+   *
+   * Conditioned on tiles arriving, so a radar that is genuinely absent leaves
+   * the device up and reachable instead of putting it in a reboot loop.
+   */
+  uint32_t result_limit_ms = ANALYSIS_WATCHDOG_MS;
+  const float interval_s = this->update_interval_s_;
+  if (interval_s > 0.0f && interval_s * 10000.0f > (float) result_limit_ms)
+    result_limit_ms = (uint32_t) (interval_s * 10000.0f);
+
+  if (since_tile_ms < (int64_t) COLLECTION_RETRY_MS &&
+      (now - this->last_result_ms_) > result_limit_ms) {
+    ESP_LOGE(TAG,
+             "no analysis result for %" PRIu32 " ms while tiles keep arriving; "
+             "restarting",
+             now - this->last_result_ms_);
+    App.safe_reboot();
+  }
 }
 
 void MR60Breathing::publish_diagnostics_() {
   uint32_t errors = this->header_errors_ + this->payload_errors_ +
                     this->unpaired_tiles_ + this->overflows_ +
-                    this->staging_dropped_;
+                    this->staging_dropped_ + this->repeated_sets_;
 
   float buffered = 0.0f;
   if (this->dsp_.count > 1 && !std::isnan(this->sample_rate_hz_))
@@ -330,10 +418,11 @@ void MR60Breathing::publish_diagnostics_() {
   ESP_LOGD(TAG,
            "sets=%" PRIu32 " rate=%.3f Hz buffered=%.0f s | frames=%" PRIu32
            " hdr_err=%" PRIu32 " pl_err=%" PRIu32 " unpaired=%" PRIu32
-           " resync=%" PRIu32 " ovf=%" PRIu32 " raw=%s/%" PRIu32,
+           " resync=%" PRIu32 " ovf=%" PRIu32 " repeat=%" PRIu32
+           " raw=%s/%" PRIu32,
            this->tile_sets_, this->sample_rate_hz_, buffered, this->frames_ok_,
            this->header_errors_, this->payload_errors_, this->unpaired_tiles_,
-           this->resync_bytes_, this->overflows_,
+           this->resync_bytes_, this->overflows_, this->repeated_sets_,
            this->raw_.has_client() ? "client" : "idle", this->raw_.dropped());
 
 #ifdef USE_SENSOR
@@ -354,6 +443,7 @@ void MR60Breathing::drain_staging_() {
   while (this->staging_read_ != this->staging_write_) {
     const StagedSet &slot = this->staging_[this->staging_read_];
     dsp_push(&this->dsp_, slot.t_us, slot.re, slot.im);
+    this->last_sample_us_ = slot.t_us;
     this->staging_read_ = (this->staging_read_ + 1) % STAGING_SLOTS;
   }
 }
@@ -367,22 +457,78 @@ void MR60Breathing::analysis_loop() {
 
     float interval = this->update_interval_s_;
     int64_t now = esp_timer_get_time();
+
+    /*
+     * A timestamp from the future stops this task for good. `due` compares
+     * against last_run_us, so once that lands ahead of the clock the
+     * difference stays negative for the rest of the run - no analysis, no
+     * publish, and no sign of it anywhere, because the staging ring is still
+     * drained on every pass and the UART diagnostics carry on as normal. A
+     * deployed device did precisely that after 55 hours and held its last
+     * breathing values for 28 hours. Clamp rather than trust monotonicity.
+     */
+    if (last_run_us > now) {
+      ESP_LOGW(TAG, "clock moved back %lld ms, re-arming the analysis",
+               (long long) ((last_run_us - now) / 1000));
+      last_run_us = now;
+    }
+
+    if (this->last_sample_us_ > now)
+      this->last_sample_us_ = now;
+
+    /*
+     * Refuse to analyse history nobody is feeding.
+     *
+     * dsp_analyze windows on the newest sample it holds, never on now, so a
+     * radar that stops sending - or one that keeps sending the same set, which
+     * the parser drops - leaves a ring that still analyses cleanly and still
+     * returns the rate it last saw. A cat that left an hour ago would go on
+     * breathing in Home Assistant.
+     */
+    const bool starved = this->last_sample_us_ != 0 &&
+                         (now - this->last_sample_us_) > STALE_SAMPLE_US;
+
+    /*
+     * Discard the history as well as refusing, once. When samples come back
+     * the gap must not be resampled across as though it were signal, and
+     * warming up again from empty costs about 7 s.
+     */
+    if (starved && this->dsp_.count > 0) {
+      ESP_LOGW(TAG, "no samples for %lld ms, discarding %d buffered",
+               (long long) ((now - this->last_sample_us_) / 1000),
+               this->dsp_.count);
+      dsp_init(&this->dsp_);
+    }
+
     bool due = (interval <= 0.0f) ||
                ((now - last_run_us) >= (int64_t) (interval * 1e6f));
 
-    if (due && this->dsp_.count >= 32 && !this->result_pending_) {
+    /*
+     * A verdict every interval, whatever it is. Publishing nothing while
+     * starved would leave the entities holding their last values - the exact
+     * failure this file has now been bitten by twice - and it would starve the
+     * watchdog in loop() into restarting a device whose analysis is working
+     * perfectly and simply has nothing to work on. dsp_analyze itself returns
+     * warming_up below 32 samples, so the short-buffer case needs no test of
+     * its own.
+     */
+    if (due && !this->result_pending_) {
       dsp_result_t r;
-      int64_t t0 = esp_timer_get_time();
-      dsp_analyze(&this->dsp_, &this->cfg_, &r);
-      int64_t cost = esp_timer_get_time() - t0;
-      last_run_us = esp_timer_get_time();
+      if (starved) {
+        dsp_no_data(&r);
+        last_run_us = esp_timer_get_time();
+      } else {
+        int64_t t0 = esp_timer_get_time();
+        dsp_analyze(&this->dsp_, &this->cfg_, &r);
+        int64_t cost = esp_timer_get_time() - t0;
+        last_run_us = esp_timer_get_time();
+        ESP_LOGD(TAG, "analysis took %lld ms -> %s %.1f /min",
+                 (long long) (cost / 1000), dsp_status_name(r.status),
+                 r.rate_bpm);
+      }
 
       this->result_ = r;
       this->result_pending_ = true;
-
-      ESP_LOGD(TAG, "analysis took %lld ms -> %s %.1f /min",
-               (long long) (cost / 1000), dsp_status_name(r.status),
-               r.rate_bpm);
     }
 
     vTaskDelay(poll);
